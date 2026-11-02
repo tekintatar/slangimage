@@ -34,7 +34,7 @@ class KuwaharaLabBlendOp(ImageOperator):
         kuw_tex: spy.Texture,
         strength: float = 1.0,
     ) -> spy.Texture:
-        
+
         w, h = src_tex.width, src_tex.height
         fmt = src_tex.format
         grid = spy.grid((h, w))

@@ -1803,8 +1803,8 @@ versions. See [UPSTREAM_ISSUES.md](UPSTREAM_ISSUES.md).
 
 The named blend and same-input cross-backend priorities are complete. The four
 involved operators and twelve simpler operators are also covered by the dated
-records above. Full-suite and artifact results for the published release are
-not yet recorded on this page.
+records above. The 2026-11-02 record covers the 0.1.0 release source; results
+for the artifacts as published on PyPI are not yet recorded on this page.
 
 1. Extend boundary policy to remaining low-level/effect entry points and input
    pixel data, and define service-facing resource budgets where needed. Public

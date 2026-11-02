@@ -80,8 +80,9 @@ that use the `ctx` fixture, AUTO-device tests and the CUDA autograd modules);
 mark any other test that creates a device yourself.
 
 GitHub Actions runs `scripts/check.sh --no-gpu` on Python 3.10 and 3.13,
-shellcheck, and the reproducible wheel/sdist build with its archive checks on
-every pull request. Hosted runners have no supported GPU, so run the GPU tests
+shellcheck, a check that `python -m slangimage` reports cleanly without a GPU,
+and the reproducible wheel/sdist build with its archive checks on every push to
+`main` and every pull request. Hosted runners have no supported GPU, so run the GPU tests
 on the backend(s) you have before opening a PR, and state in the PR which
 backend, device and dependency versions you tested. Maintainers additionally run artifact validation,
 fresh-install checks and the other GPU suites: Metal on Apple Silicon, and

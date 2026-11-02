@@ -37,7 +37,7 @@ class UnsharpMaskOp(ImageOperator):
         radius: float = 2.0,
         sigma: float = 1.5,
         amount: float = 1.0,
-        colorSpace: str = "rgb" 
+        colorSpace: str = "rgb"
     ) -> spy.Texture:
         """
         Fully self-contained USM:
@@ -95,13 +95,13 @@ class UnsharpMaskOp(ImageOperator):
             )
 
         return dst_tex
-    
+
     def apply_default(
         self,
         src_tex: spy.Texture,
         amount: float = 1.0,
         megapixels: float | None = None,
-        colorSpace: str = "rgb" 
+        colorSpace: str = "rgb"
     ) -> spy.Texture:
         """
         Convenience wrapper that chooses radius and sigma from image size.

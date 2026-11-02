@@ -29,7 +29,7 @@ void vibrance(
         return;
 
     float4 s = src[tid];
-    
+
 
     // Clamp overall range to be safe
     float A = clamp(amount, -1.0, 1.0);
@@ -48,4 +48,3 @@ void vibrance(
 
     dst[tid] = float4(float3(outColor), s.a);
 }
-

@@ -20,7 +20,7 @@ def params_from_amount(amount: float, megapixels: float | None = None) -> Surfac
     Adaptive SurfaceBlur parameters based on:
         - a blur strength 'amount' (values below 0.1 are raised to 0.1)
         - image megapixels (optional)
-    
+
     Rules:
         * radius grows with image size (sqrt-ish of MP)
         * radius capped at 15

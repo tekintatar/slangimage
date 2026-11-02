@@ -218,7 +218,8 @@ def from_torch(
         )
     channels = tensor.shape[0] if layout == "chw" else tensor.shape[-1]
     if channels not in (3, 4):
-        hint = ' (pass layout="chw" for C, H, W tensors)' if layout == "hwc" else ""
+        looks_chw = layout == "hwc" and tensor.shape[0] in (3, 4)
+        hint = ' (pass layout="chw" for C, H, W tensors)' if looks_chw else ""
         raise ValueError(
             f"expected 3 or 4 channels, got shape {tuple(tensor.shape)} "
             f"with layout {layout!r}{hint}"

@@ -28,7 +28,7 @@ class LabLumaExtractOp(ImageOperator):
         grid = spy.grid((h, w))
 
         dst = alloc_output(self.device, w, h, fmt)
-        
+
         self.module.lab_luma_extract(grid, src_tex, dst)
         return dst
 

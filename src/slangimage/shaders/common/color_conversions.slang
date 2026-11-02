@@ -1,6 +1,6 @@
 // sRGB to linear
 float3 srgb_to_linear(float3 c)
-{   
+{
     float3 lo = c / 12.92;
     float3 hi = pow((c + 0.055) / 1.055, float3(2.4, 2.4, 2.4));
     float3 res;

@@ -140,4 +140,3 @@ def test_simple_color_alpha_does_not_affect_rgb(ctx, precision):
     second_sepia = check_sepia(ctx, stored, precision, .25)
     np.testing.assert_array_equal(first_exposure[..., :3], second_exposure[..., :3])
     np.testing.assert_array_equal(first_sepia[..., :3], second_sepia[..., :3])
-

@@ -112,7 +112,9 @@ document where border, color-model or filtering semantics are only analogous.
 
 - Reference results live in `benchmarks/results_{metal,cuda,vulkan}.json`;
   regenerate the published table from a source checkout with
-  `slangimage-bench report benchmarks/results_*.json -o docs/BENCHMARKS.md`.
+  `slangimage-bench report benchmarks/results_*.json -o docs/BENCHMARKS.md`
+  (the report rewrites the whole file, so restore the hand-written notes under
+  its heading afterwards).
 - The Metal reference run used an Apple M3 Max; the CUDA/Vulkan reference runs
   used an NVIDIA L40S Linux host prepared with the helper scripts in
   `scripts/cuda_box/` (they assume Ubuntu 24.04 with an NVIDIA driver installed

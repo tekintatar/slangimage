@@ -229,4 +229,3 @@ def test_cmyk_halftone_control_and_input_clamps(ctx, precision):
         check_halftone(ctx, stored, precision, (5, 15, 0)),
         check_halftone(ctx, stored, precision, (5, 15, .001)),
     )
-

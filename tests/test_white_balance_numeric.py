@@ -180,4 +180,3 @@ def test_white_balance_control_clamps_and_alpha_independence(ctx, precision):
     stored[..., 3] *= -2
     second = check(ctx, stored, precision, 5000, 60)
     np.testing.assert_array_equal(first[..., :3], second[..., :3])
-

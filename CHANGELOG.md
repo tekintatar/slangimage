@@ -38,7 +38,9 @@ First public release (0.1.0).
   `release_device()` for explicit teardown. Devices are bound to the thread
   that created them.
 - `python -m slangimage`: a setup report that runs a test kernel on each
-  backend and explains every failure (`--json` for bug reports).
+  backend in its own process and explains every failure (`--json` for bug
+  reports).
+- Type information for the whole package (`py.typed`), checked with mypy.
 - Custom `.slang` kernels from your own directories through
   `ModuleCache.add_ops_dir()`, including shadowing built-in operators.
 - Differentiable operators for PyTorch on CUDA (`slangimage.diff`) and

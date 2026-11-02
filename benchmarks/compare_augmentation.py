@@ -31,8 +31,8 @@
 # torch 2.13 / kornia 0.8.3 / torchvision 0.28; full data:
 # comparisons/results_aug_{cuda,metal}.json). A second CUDA run (2026-11-02,
 # NVIDIA RTX PRO 4500 Blackwell, slangimage 0.1.0, kornia 0.9.0) is in
-# comparisons/results_aug_cuda_rtxpro4500.json; kornia 0.9.0's CLAHE is about
-# 6x faster than 0.8.3's, so that ratio is much smaller there.
+# comparisons/results_aug_cuda_rtxpro4500.json; kornia 0.9.0's CLAHE is up to
+# about 6x faster than 0.8.3's (1024^2 fp16), so that ratio is much smaller there.
 # Selected fp16 ms, slangimage / kornia / torchvision:
 #
 #   1024^2, NVIDIA L40S (CUDA):
@@ -61,8 +61,8 @@
 #   auto-recycle through the texture pool when their Image handle is
 #   dropped (device.create_texture cost ~0.3 ms/call on CUDA — that
 #   WAS the floor). CUDA elementwise cells went 0.34-0.37 ms ->
-#   0.08 ms: gamma/saturation/posterize now BEAT kornia (1.8-13x),
-#   torchvision's edge shrank from ~20x to 2-4x — the remainder is
+#   0.08 ms: gamma/saturation/posterize then beat kornia (1.8-13x in that
+#   July run), torchvision's edge shrank from ~20x to 2-4x — the remainder is
 #   slangpy per-call overhead (~0.03 ms) + sync, upstream territory.
 #   On Metal the floor is the command-buffer round trip (~0.3 ms,
 #   which MPS pays identically), so Metal cells were already parity.

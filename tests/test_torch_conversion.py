@@ -91,6 +91,13 @@ def test_from_torch_rejects_invalid_input(ctx, tensor, kwargs, error, match):
         si.from_torch(tensor, device=ctx[0], **kwargs)
 
 
+def test_from_torch_layout_hint_only_for_chw_shaped_tensors(ctx):
+    with pytest.raises(ValueError) as grayscale:
+        si.from_torch(torch.zeros(16, 16, 1), device=ctx[0])
+    assert "3 or 4 channels" in str(grayscale.value)
+    assert 'layout="chw"' not in str(grayscale.value)
+
+
 def test_to_torch_rejects_invalid_layout(ctx):
     image = si.from_numpy(_pixels(np.float32), device=ctx[0])
     with pytest.raises(ValueError, match="layout must be"):

@@ -49,7 +49,7 @@ autograd, packaging/support-matrix and performance validation work recorded in
     adjoint via a plain-kernel torch.autograd.Function bridge (the D0
     manual-bridge pattern) replaced Slang's generated atomic-scatter
     backward. Training step 1024²: 261 ms → **1.00 ms** (kornia: 85 ms —
-    from 3× slower to **85× faster**, with 194× less VRAM). Exact +
+    from 3× slower to **85× faster** in that July run, with 194× less VRAM). Exact +
     deterministic (no atomics). Border semantics moved to
     truncated-window (skip out-of-bounds taps) — the symmetry w(p,q) ==
     w(q,p) is what makes the one-pass gather possible. Same pattern
@@ -84,8 +84,8 @@ autograd, packaging/support-matrix and performance validation work recorded in
   - **Backward-pass benchmark vs kornia + torchvision v2** — landed and
     refreshed 2026-09-12 (benchmarks/compare_kornia_diff.py, reference numbers
     + honest notes in header): bilateral training step 93–97× faster than
-    kornia at 1024²–2048² in the reference run (80–105× across two L40S
-    hosts on 2026-09-27) with a
+    kornia at 1024²–2048² in the reference run (46–97× across the L40S and
+    RTX PRO 4500 comparison runs) with a
     194× lower Torch-allocator peak (31 GB/step at 2048² — one image; torchvision lacks
     the op), hue-rotate step 5–31× vs kornia while torchvision's
     adjust_hue raises on grad input (augmentation-only). Gaussian is near
@@ -100,7 +100,8 @@ autograd, packaging/support-matrix and performance validation work recorded in
 Positioning: the non-diff path competes in augmentation pipelines
 (benchmarks/compare_augmentation.py, refreshed 2026-09-12). The specialized
 paths are the wins: versus kornia, CLAHE is 11–15253×, bilateral 45–230× and
-hue/saturation 6–261× across the recorded matrix. Kornia and torchvision win
+hue/saturation 6–261× across the 2026-09-12 L40S and M3 Max runs (on the
+RTX PRO 4500 with kornia 0.9.0: CLAHE 5–11×, saturation 3–10×). Kornia and torchvision win
 several tiny CUDA elementwise cells, and torchvision also wins a few small
 Metal cells; the comparison header records those losses. Color operators kornia /
 torchvision have that si.ops lacks — the parity set to build:
@@ -155,7 +156,7 @@ torchvision have that si.ops lacks — the parity set to build:
   (upstream candidate) — hoist, consolidate algebraically, avoid
   atan2. Results at 12MP: kuwahara CUDA 21.1→5.9 ms, Vulkan
   12.7→6.8 ms; surface_blur CUDA 4.6→2.4 ms. CUDA is now the fastest
-  backend on every suite op but resize — no more torch-interop
+  backend on every suite op but resize (July 2026) — no more torch-interop
   tension.
 - ~~float3 sweep of remaining neighborhood kernels~~ ✅ 2026-07-12:
   bilateral 4.4→2.0 ms, nl_means 31→10.4 ms (3×), sharpen_rgb
@@ -198,8 +199,8 @@ torchvision have that si.ops lacks — the parity set to build:
 - Shader disk cache to cut cold-start compilation (CUDA first call, compile +
   dispatch, was 143–887 ms per op × precision in the current reference run,
   the largest including one-time session setup; see [BENCHMARKS.md](BENCHMARKS.md)).
-- bfloat16 tensor-input validation (upcast path exists, but explicit bf16 tests
-  are missing); no bf16 texture formats exist.
+- bfloat16 texture storage (bf16 tensor inputs are already supported and
+  tested; there is no bf16 texture format).
 
 ## Sequencing
 

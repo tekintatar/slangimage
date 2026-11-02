@@ -36,7 +36,7 @@ class EdgePreservingUnsharpMaskOp(ImageOperator):
         w, h = src_tex.width, src_tex.height
         fmt = src_tex.format
         grid = spy.grid((h, w))
-        
+
         dst = alloc_output(self.device, w, h, fmt)
 
         grid = spy.grid((h, w))

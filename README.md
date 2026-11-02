@@ -24,24 +24,26 @@ is largest where the math is most complex, and it carries over to training
 memory.
 
 Measured on two NVIDIA GPU generations (L40S and RTX PRO 4500 Blackwell),
-batch 1, 1024² and 2048², fp16 and fp32; ranges span both GPUs:
+batch 1, 1024² and 2048²; forward rows cover fp16 and fp32, training-step rows
+fp32. Ranges span both GPUs:
 
 | Operation | vs kornia | vs torchvision |
 |---|---|---|
-| Bilateral filter, forward | 51–148× faster | no equivalent |
-| Bilateral filter, training step (forward + backward) | 46–97× faster, 158–194× less GPU memory (160 MB vs 25–31 GB at 2048²) | no equivalent |
+| Bilateral filter, forward | 51–147× faster | no equivalent |
+| Bilateral filter, training step (forward + backward) | 46–97× faster, 158–194× less GPU memory (160 MiB vs about 25–30 GiB at 2048²) | no equivalent |
 | CLAHE | 5–25× faster | no equivalent |
 | Hue rotation, forward | 7–15× faster | 5–28× faster |
 | Gaussian blur 19×19, forward | 3–7× faster | 3–9× faster |
 
 Where it is not faster: tiny per-pixel operations (invert, gamma, grayscale,
-autocontrast) cost about 0.05–0.1 ms per call here, mostly dispatch overhead,
-and torchvision's native kernels are about 2–5× faster at that scale; in
+autocontrast) cost about 0.05–0.7 ms per call here, mostly dispatch overhead,
+and torchvision's native kernels are about 1.6–5.6× faster at that scale; in
 training, PyTorch's own bilinear resize is about 2–3× faster per step. Results
-depend on library versions: kornia 0.9.0's CLAHE is about 6× faster than
-0.8.3's, which accounts for most of the CLAHE range above. Every cell,
-including the ones SlangImage loses, and the raw data are linked under
-[Benchmarks](#benchmarks).
+depend on library versions: kornia 0.9.0's CLAHE is up to about 6× faster than
+0.8.3's (at 1024², fp16, measured on different GPUs), which accounts for most
+of the CLAHE range above. Every cell, including the ones SlangImage loses, and
+the raw data are linked under
+[Benchmarks](https://github.com/tekintatar/slangimage#benchmarks).
 
 ## Installation
 
@@ -57,9 +59,13 @@ python -m slangimage      # setup report: which GPU backends work, and why not
 ```
 
 On Debian/Ubuntu, `sudo apt install python3-venv` first (system `pip` refuses
-to install outside a virtual environment there). Optional extras:
+to install outside a virtual environment there). Minimal Linux images (Docker
+base images, some cloud servers) also lack system libraries SlangPy needs:
+`sudo apt install libatomic1 libx11-6` (plus `libvulkan1` for the Vulkan
+backend); otherwise `import slangimage` fails with
+`ImportError: libatomic.so.1` or `libX11.so.6`. Optional extras:
 `slangimage[torch]` (differentiable ops — CUDA only, see
-[PyTorch extra](#pytorch-extra-slangimagetorch) below), `slangimage[bench]`
+[PyTorch extra](https://github.com/tekintatar/slangimage#pytorch-extra-slangimagetorch) below), `slangimage[bench]`
 (adds NVIDIA VRAM sampling to the benchmark suite; not needed on Metal) and
 `slangimage[playground]` (the Gradio UI).
 
@@ -74,7 +80,7 @@ wheels SlangImage depends on:
 - **Windows:** SlangPy publishes Windows wheels, but SlangImage has not been
   tested on Windows.
 
-See the [backend support matrix](#backend-support) below and the
+See the [backend support matrix](https://github.com/tekintatar/slangimage#backend-support) below and the
 [platform notes](https://github.com/tekintatar/slangimage/blob/main/docs/PLATFORM_NOTES.md)
 for tested platforms and troubleshooting.
 
@@ -188,7 +194,7 @@ selection), 06 needs CUDA and the `torch` extra. Rendered images go to
 
 `img.to_torch()` and `si.from_torch()` copy images to and from torch tensors
 on any backend (they need only `torch`). The differentiable ops in
-`slangimage.diff` / `slangimage.nn` need the [`torch` extra](#pytorch-extra-slangimagetorch)
+`slangimage.diff` / `slangimage.nn` need the [`torch` extra](https://github.com/tekintatar/slangimage#pytorch-extra-slangimagetorch)
 and an NVIDIA GPU, and take one image at a time as a float32 `(H, W, 3)` CUDA
 tensor:
 
@@ -238,6 +244,8 @@ To pick a backend explicitly, pass a backend name (or a device) when you
 create images:
 
 ```python
+import slangimage as si
+
 img = si.load("photo.jpg", device="vulkan")  # "auto" (default), "metal", "cuda" or "vulkan"
 print(img)                                   # e.g. Image(640x480, fp16, vulkan)
 dev = si.device("vulkan")                    # the same device object, e.g. for effects
@@ -248,7 +256,7 @@ dev = si.device("vulkan")                    # the same device object, e.g. for 
 Requesting a backend that is not available raises `RuntimeError` (Vulkan was
 not available on the tested macOS machine; use Metal there). `si.device()`
 returns a process-wide default owned by the thread that first creates it; see
-[Conventions](#conventions) for multithreaded use. The `SLANGIMAGE_BACKEND`
+[Conventions](https://github.com/tekintatar/slangimage#conventions) for multithreaded use. The `SLANGIMAGE_BACKEND`
 environment variable only selects the backend for the test suite; the library
 itself does not read it.
 
@@ -305,6 +313,9 @@ texture pool. Their parameters are explicit and validated; Gaussian effects
 accept either `blur_amount` or the complete `radius`/`sigma` pair:
 
 ```python
+import slangimage as si
+
+img = si.load("photo.jpg")
 modules = si.ModuleCache(img.device)
 glow = si.fx.SoftGlowEffect(img.device, modules)
 out = glow.apply(img, radius=9, sigma=3.0, glow_strength=0.7)
@@ -317,8 +328,7 @@ out = glow.apply(img, radius=9, sigma=3.0, glow_strength=0.7)
 and its loss — or *be* the model:
 
 ```python
-import torch, numpy as np
-import slangimage as si
+import torch
 import slangimage.diff as sid
 
 img = torch.rand(512, 512, 3, device="cuda", requires_grad=True)
@@ -327,13 +337,13 @@ out = sid.sepia(out, intensity=0.8)
 out.mean().backward()                                  # fused backward kernels
 ```
 
-The [PyTorch quick start](#quick-start-pytorch-cuda) shows a complete
+The [PyTorch quick start](https://github.com/tekintatar/slangimage#quick-start-pytorch-cuda) shows a complete
 training loop that learns a color grade as a LUT.
 
 Available: `gaussian_blur`, `bilateral` (hand-written gather backward —
-roughly 80–105× faster per training step than kornia at 1–4 MP on L40S hosts
-— 93–97× in the reference run; the 1 MP ratio depends on host CPU overhead —
-with a ~194× lower Torch-allocator peak),
+46–97× faster per training step than kornia at 1–4 MP across the L40S and
+RTX PRO 4500 comparison runs — 93–97× in the L40S reference run — with a
+158–194× lower Torch-allocator peak),
 `unsharp_mask`, `resize` (bilinear/bicubic; forward and backward match
 `F.interpolate(align_corners=False, antialias=False)` to within 1e-4 in the
 tests), `exposure`, `sepia`, `hue_rotate`, `blend`, `lut` (differentiable
@@ -351,8 +361,10 @@ device or the SlangPy torch bridge is missing.
 `snn.Lut()` is trainable color grading as a drop-in module:
 
 ```python
+import torch
 import slangimage.nn as snn
 
+img = torch.rand(512, 512, 3, device="cuda")
 grade = torch.nn.Sequential(snn.Bilateral(radius=5), snn.Lut()).cuda()
 out = grade(img)                             # the LUT is an nn.Parameter
 ```
@@ -361,7 +373,7 @@ out = grade(img)                             # the LUT is an nn.Parameter
 
 fp16 is the default storage format: lossless for 8-bit sources and half the
 texture-storage bytes of fp32. In the standard benchmark its median speedup is
-about 1.4–1.7× per backend (CUDA ≈1.6×, Vulkan ≈1.4–1.5×, Metal ≈1.7× in our
+about 1.5–1.6× per backend (CUDA ≈1.6×, Vulkan ≈1.5×, Metal ≈1.6× in our
 runs), while individual cells range from near parity to about 2.2×; this is not
 a claim that total process VRAM is halved (see
 [benchmarks](https://github.com/tekintatar/slangimage/blob/main/docs/BENCHMARKS.md)).

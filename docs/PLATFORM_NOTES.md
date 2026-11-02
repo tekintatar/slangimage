@@ -10,7 +10,7 @@ collects platform status, first-run behavior, threading and common errors.
 |---|---|---|
 | macOS 26.5, Apple M3 Max (arm64) | Metal | Full test suite (Python 3.12); clean wheel installs with a GPU smoke check on Python 3.10, 3.11, 3.12 and 3.13; examples 01–05; benchmark suite |
 | Ubuntu 24.04 (x86_64), NVIDIA L40S, driver 580.126.16 | CUDA, Vulkan | Full test suites from the installed wheel on Python 3.12, including the CUDA autograd tests with the `torch` extra (PyTorch 2.13, SlangPy 0.42.0); examples 01–06; benchmark suite |
-| Ubuntu 24.04 (x86_64), NVIDIA RTX PRO 4500 Blackwell (compute capability 12.0), driver 580.126.16 | CUDA, Vulkan | Full test suites from the installed wheel on Python 3.12, including the CUDA autograd tests with the `torch` extra (PyTorch 2.13, SlangPy 0.42.0); examples 01–06. Not benchmarked |
+| Ubuntu 24.04 (x86_64), NVIDIA RTX PRO 4500 Blackwell (compute capability 12.0), driver 580.126.16 | CUDA, Vulkan | Full test suites from the installed wheel on Python 3.12, including the CUDA autograd tests with the `torch` extra (PyTorch 2.13, SlangPy 0.42.0); examples 01–06; kornia/torchvision comparison scripts (the standard benchmark suite was not run) |
 
 Details and exact counts are in [TEST_COVERAGE.md](TEST_COVERAGE.md)
 (*Installed-artifact checks* and *Performance, service and shipped examples*).
@@ -21,9 +21,10 @@ resolves SlangPy 0.42; SlangPy 0.43 needs macOS 26), Linux with glibc 2.34 or
 later on x86_64 or aarch64, and Windows. Intel Macs and macOS 14 or earlier
 cannot install SlangPy.
 
-Not tested: Windows, macOS 15, Linux on aarch64, AMD or Intel GPUs, Linux
-distributions other than Ubuntu 24.04, and Python versions other than 3.12 on
-Linux. On Windows, automatic selection would try CUDA and then Vulkan, but no
+Not tested: Windows, macOS 15, Linux on aarch64, AMD or Intel GPUs, and Linux
+distributions other than Ubuntu 24.04. On Linux, the full GPU suites ran on
+Python 3.12 only; the GPU-free tests run on 3.10 and 3.13 in CI, and the
+`torch` extra install was verified on 3.10, 3.12 and 3.13. On Windows, automatic selection would try CUDA and then Vulkan, but no
 Windows configuration has been validated.
 
 Linux + NVIDIA prerequisites are described in the README sections *CUDA on
@@ -36,8 +37,11 @@ Linux: install NVRTC* (the runtime compiler the CUDA backend needs) and
   and for each of Metal, CUDA and Vulkan whether a test kernel compiles and
   returns the right values, with the reason for every failure, plus which
   backend automatic selection picks and whether the PyTorch differentiable ops
-  work. It exits with status 1 when no backend works. `--json` gives the same
-  report as JSON; include it in bug reports.
+  work. Each backend is checked in its own child process, so a driver crash is
+  reported rather than ending the report, and a software Vulkan renderer such
+  as llvmpipe (a CPU fallback, far too slow for real use) is flagged. It exits
+  with status 1 when no backend works. `--json` gives the same report as JSON;
+  include it in bug reports.
 - Automatic selection tries Metal and then Vulkan on macOS, and CUDA and then
   Vulkan on other systems. The CPU is never used: kernels require a GPU, and
   requesting the CPU backend raises an error.
@@ -72,7 +76,7 @@ Linux: install NVRTC* (the runtime compiler the CUDA backend needs) and
 
 Kernels are compiled the first time an operator runs on a device at a given
 storage precision (fp16 or fp32). In the reference runs, the first call
-(compile plus first dispatch) took 46–462 ms per benchmark case; the very first
+(compile plus first dispatch) took 46–301 ms per benchmark case; the very first
 kernel in each process also paid one-time session setup (362–887 ms in total
 for that case). See the first-call table in [BENCHMARKS.md](BENCHMARKS.md).
 SlangImage does not yet configure an on-disk shader cache, so every new
@@ -174,6 +178,7 @@ operator.
 |---|---|
 | `No matching distribution found for slangpy`, or pip installs `slangimage` 0.0.1 | No SlangImage/SlangPy wheel matches this interpreter or platform (Python outside 3.10–3.13, Intel Mac, macOS 14 or earlier, or Linux with glibc older than 2.34). pip then fails or falls back to 0.0.1, an early placeholder release. Use a supported platform and interpreter (for example `python3.12 -m venv .venv`). |
 | `no supported GPU device found — slangimage needs a Metal, CUDA, or Vulkan GPU.` | Automatic selection could not create any GPU device. Run `python -m slangimage` to see why each backend failed. On Linux + NVIDIA, check the CUDA prerequisites and the Vulkan driver. |
+| `ImportError: libatomic.so.1` or `libX11.so.6` on `import slangimage` | A minimal Linux image lacks system libraries SlangPy's native module needs: `sudo apt install libatomic1 libx11-6` (plus `libvulkan1` for Vulkan). |
 | `[ERROR] (rhi) layer: Cannot find CUDA nvrtc` | NVRTC is not installed or not found; automatic selection continues on Vulkan. Install NVRTC as described in the README (*CUDA on Linux: install NVRTC*). |
 | `CUDA_ERROR_UNSUPPORTED_PTX_VERSION` | The installed NVRTC is newer than the "CUDA Version" supported by the driver (see `nvidia-smi`); install a matching NVRTC. |
 | `could not create a <backend> device (Failed to create device!)` | The explicitly requested backend is not available on this machine; the rest of the message says what that backend needs (on Linux, `si.device("cuda")` raises this when NVRTC is missing). |

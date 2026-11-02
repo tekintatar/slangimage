@@ -16,6 +16,8 @@ fi
 
 if git rev-parse --git-dir > /dev/null 2>&1; then
     echo "== whitespace (git diff --check)"
+    # every committed file (against the empty tree), then uncommitted changes
+    git diff --check "$(git hash-object -t tree /dev/null)" HEAD
     git diff --check HEAD
 fi
 echo "== ruff"

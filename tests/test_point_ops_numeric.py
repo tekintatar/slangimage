@@ -135,4 +135,3 @@ def test_point_ops_tiny_alpha_independence_repeated_and_low_level(ctx, precision
     np.testing.assert_array_equal(
         si.ops.clamp_multiply(source, changed).to_numpy(), calls[2][0].to_numpy()
     )
-
