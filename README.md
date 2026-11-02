@@ -100,6 +100,7 @@ candidate; no environment variables needed):
 
 ```bash
 sudo apt-get install -y --no-install-recommends cuda-nvrtc-dev-13-0 cuda-cudart-dev-13-0
+sudo ldconfig     # refresh the shared-library cache so NVRTC is found
 ```
 
 Without sudo, inside your virtual environment:

@@ -42,6 +42,7 @@ wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/
 sudo dpkg -i cuda-keyring_1.1-1_all.deb && sudo apt-get update
 sudo apt-get install -y --no-install-recommends build-essential python3-dev python3-venv \
     cuda-nvrtc-dev-13-0 cuda-cudart-dev-13-0 cuda-crt-13-0
+sudo ldconfig   # refresh the shared-library cache so NVRTC is found
 
 # Per project:
 python3.12 -m venv .venv && . .venv/bin/activate
