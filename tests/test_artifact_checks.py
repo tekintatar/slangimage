@@ -22,7 +22,7 @@ spec = importlib.util.spec_from_file_location(
 checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 ROOT = f"slangimage-{VERSION}"
 INFO = f"{ROOT}.dist-info"
 PAYLOAD = {"slangimage/__init__.py": b"", "slangimage/playground.py": b"# playground\n"}

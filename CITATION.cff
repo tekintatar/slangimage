@@ -13,7 +13,7 @@ authors:
 repository-code: "https://github.com/tekintatar/slangimage"
 url: "https://github.com/tekintatar/slangimage"
 license: Apache-2.0
-version: 0.1.0
+version: 0.1.1
 keywords:
   - image-processing
   - gpu

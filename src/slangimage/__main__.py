@@ -148,6 +148,11 @@ def _torch_status() -> dict[str, Any]:
             import slangimage.diff as sid
 
             status["differentiable_ops"] = sid.available()
+            if not status["differentiable_ops"]:
+                try:  # name the setup problem (e.g. NVRTC not found), if any
+                    sid._ctx()
+                except Exception as err:  # noqa: BLE001
+                    status["error"] = str(err)
     except Exception as err:  # noqa: BLE001
         status["differentiable_ops"] = False
         status["error"] = str(err)
@@ -236,6 +241,8 @@ def _format(report: dict[str, Any]) -> str:
         state = "available" if torch["differentiable_ops"] else "NOT available"
         lines.append(f"  CUDA device {torch['cuda_device']}: differentiable ops {state}")
         if not torch["differentiable_ops"]:
+            if torch.get("error"):
+                lines.append(f"  {torch['error']}")
             lines.append("  see the README section 'PyTorch extra' for the three-step install")
     return "\n".join(lines)
 

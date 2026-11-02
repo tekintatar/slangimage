@@ -12,7 +12,7 @@ Runs the same Slang kernels on Metal, CUDA, and Vulkan. Convention:
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from .image import Image, load, from_numpy, from_pil, from_torch, device, wrap_pooled
 

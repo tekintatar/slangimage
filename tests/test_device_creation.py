@@ -104,6 +104,7 @@ def test_explicit_cuda_that_cannot_compile_raises_setup_guidance(fake_backends):
     message = str(info.value)
     assert message.startswith("created a CUDA device but could not compile a test kernel")
     assert "E52002" in message and "NVRTC" in message
+    assert "sudo ldconfig" in message and "LD_LIBRARY_PATH" in message
     assert 'si.device("vulkan")' in message
     assert E52002 in str(info.value.__cause__)
     assert fake_backends.closed == ["cuda"]
@@ -189,9 +190,46 @@ def test_diff_device_failure_explains_the_cuda_runtime_compiler():
     assert message.startswith(
         "slangimage.diff could not create SlangPy's CUDA device (Failed to create device!)"
     )
-    assert "NVRTC" in message and "PyTorch extra" in message
+    assert "NVRTC" in message and "PyTorch extra" in message and "sudo ldconfig" in message
     assert "in function" not in message
     assert str(info.value.__cause__) == CREATE_FAILED
+
+
+def test_diff_device_that_cannot_compile_raises_setup_guidance(monkeypatch):
+    # The device is created, but NVRTC cannot be loaded (e.g. a stale library
+    # cache right after an apt install): fail now, clearly, not at the first op.
+    import slangimage.diff as sid
+
+    created = object()
+    closed = []
+
+    def no_compiler(device):
+        assert device is created
+        raise RuntimeError(E52002)
+
+    monkeypatch.setattr(device_runtime, "_verify_runtime_compiler", no_compiler)
+    monkeypatch.setattr(device_runtime, "_close_quietly", closed.append)
+    fake_spy = SimpleNamespace(DeviceType=SimpleNamespace(cuda="cuda"),
+                               create_torch_device=lambda **kwargs: created)
+    with pytest.raises(RuntimeError) as info:
+        sid._create_torch_cuda_device(fake_spy)
+    message = str(info.value)
+    assert message.startswith(
+        "slangimage.diff created SlangPy's CUDA device but could not compile a test kernel"
+    )
+    assert "E52002" in message and "sudo ldconfig" in message and "PyTorch extra" in message
+    assert closed == [created]
+
+
+def test_diff_device_is_returned_after_a_passing_probe(monkeypatch):
+    import slangimage.diff as sid
+
+    created, probed = object(), []
+    monkeypatch.setattr(device_runtime, "_verify_runtime_compiler", probed.append)
+    fake_spy = SimpleNamespace(DeviceType=SimpleNamespace(cuda="cuda"),
+                               create_torch_device=lambda **kwargs: created)
+    assert sid._create_torch_cuda_device(fake_spy) is created
+    assert probed == [created]
 
 
 def test_image_constructors_reject_an_unknown_backend_name():

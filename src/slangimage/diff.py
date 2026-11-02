@@ -32,19 +32,31 @@ _SHADER = Path(__file__).resolve().parent / "shaders" / "diff" / "diff_kernels.s
 
 
 def _create_torch_cuda_device(spy: Any) -> Any:
-    """SlangPy's CUDA device for torch interop, with setup guidance on failure."""
-    try:
-        return spy.create_torch_device(type=spy.DeviceType.cuda)
-    except RuntimeError as e:
-        from .runtime.device import _summarize
+    """SlangPy's CUDA device for torch interop, with setup guidance on failure.
 
+    Like the texture path, the new device must compile and run a one-pixel test
+    kernel: device creation can succeed while NVRTC cannot be loaded, which
+    would otherwise surface only as a raw E52002 error on the first operation.
+    """
+    from .runtime import device as runtime
+
+    hint = runtime._NVRTC_HINT + " and 'PyTorch extra'."
+    try:
+        device = spy.create_torch_device(type=spy.DeviceType.cuda)
+    except RuntimeError as e:
         raise RuntimeError(
-            f"slangimage.diff could not create SlangPy's CUDA device ({_summarize(e)}). "
-            "SlangPy compiles CUDA kernels at run time with NVRTC, which must be "
-            "installed and no newer than the CUDA version your NVIDIA driver reports "
-            "(nvidia-smi); see the README sections 'CUDA on Linux: install NVRTC' and "
-            "'PyTorch extra'."
+            f"slangimage.diff could not create SlangPy's CUDA device ({runtime._summarize(e)}). "
+            + hint
         ) from e
+    try:
+        runtime._verify_runtime_compiler(device)
+    except Exception as e:
+        runtime._close_quietly(device)
+        raise RuntimeError(
+            "slangimage.diff created SlangPy's CUDA device but could not compile a "
+            f"test kernel on it ({runtime._summarize(e)}). " + hint
+        ) from e
+    return device
 
 
 @functools.lru_cache(maxsize=1)

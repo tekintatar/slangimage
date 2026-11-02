@@ -110,12 +110,14 @@ void slangimage_runtime_probe(uint2 coord, [format("rgba32f")] RWTexture2D<float
 """
 _PROBE_VALUE = (0.25, 0.5, 0.75, 1.0)
 
-_CUDA_SETUP_HINT = (
+_NVRTC_HINT = (
     "The CUDA backend compiles kernels at run time with NVRTC and needs the CUDA "
     "runtime headers, both no newer than the CUDA version your NVIDIA driver "
-    "reports (nvidia-smi); see the README section 'CUDA on Linux: install "
-    "NVRTC', or pass si.device(\"vulkan\") to use Vulkan."
+    "reports (nvidia-smi). After installing them with apt, run `sudo ldconfig` so "
+    "NVRTC can be found; with the pip packages, set both CUDA_PATH and "
+    "LD_LIBRARY_PATH. See the README section 'CUDA on Linux: install NVRTC'"
 )
+_CUDA_SETUP_HINT = _NVRTC_HINT + ", or pass si.device(\"vulkan\") to use Vulkan."
 
 
 # SlangPy appends the native source location ("…/device.cpp:264 in function

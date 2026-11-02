@@ -7,6 +7,26 @@ reaches 1.0.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-02
+
+### Fixed
+
+- `slangimage.diff` now runs a one-pixel test kernel when it creates its CUDA
+  device. When NVRTC cannot be loaded, the first differentiable operation
+  raises a `RuntimeError` with setup guidance instead of a raw
+  `E52002 pass-through compiler not found` error.
+- CUDA setup errors (texture and differentiable paths) say what to do when
+  NVRTC is installed but not found: run `sudo ldconfig` after an apt install,
+  or set both `CUDA_PATH` and `LD_LIBRARY_PATH` for the pip packages.
+- `python -m slangimage` shows why the differentiable ops are unavailable.
+
+### Documentation
+
+- The system-wide NVRTC install steps (README, docs/INSTALL_TORCH.md) end with
+  `sudo ldconfig`: right after the apt install the shared-library cache can
+  miss NVRTC, so CUDA fell back to Vulkan and `slangimage.diff` reported
+  unavailable.
+
 ## [0.1.0] - 2026-11-02
 
 First public release.
