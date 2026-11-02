@@ -209,8 +209,8 @@ controls raise `ValueError` before dispatch (see the
 | Auto-selected on | macOS | Linux | fallback |
 
 Validated on macOS 26 with an Apple M3 Max (Metal) and on Ubuntu 24.04 with an
-NVIDIA L40S (CUDA and Vulkan). Windows, other GPUs and other Linux
-distributions have not been tested; see the
+NVIDIA L40S and an NVIDIA RTX PRO 4500 Blackwell (CUDA and Vulkan). Windows,
+other GPUs and other Linux distributions have not been tested; see the
 [platform notes](https://github.com/tekintatar/slangimage/blob/main/docs/PLATFORM_NOTES.md).
 
 Differentiable ops require PyTorch and are CUDA-only (torch interop).

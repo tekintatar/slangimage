@@ -9,7 +9,8 @@ collects platform status, first-run behavior, threading and common errors.
 | Platform | Backends | What has been run |
 |---|---|---|
 | macOS 26.5, Apple M3 Max (arm64) | Metal | Full test suite (Python 3.12); clean wheel installs with a GPU smoke check on Python 3.10, 3.11, 3.12 and 3.13; examples 01–05; benchmark suite |
-| Ubuntu 24.04 (x86_64), NVIDIA L40S, driver 580.126.16 | CUDA, Vulkan | Full test suites from the installed wheel on Python 3.12, including the CUDA autograd tests with the `torch` extra (PyTorch 2.13, SlangPy 0.42.0); example 06; benchmark suite |
+| Ubuntu 24.04 (x86_64), NVIDIA L40S, driver 580.126.16 | CUDA, Vulkan | Full test suites from the installed wheel on Python 3.12, including the CUDA autograd tests with the `torch` extra (PyTorch 2.13, SlangPy 0.42.0); examples 01–06; benchmark suite |
+| Ubuntu 24.04 (x86_64), NVIDIA RTX PRO 4500 Blackwell (compute capability 12.0), driver 580.126.16 | CUDA, Vulkan | Full test suites from the installed wheel on Python 3.12, including the CUDA autograd tests with the `torch` extra (PyTorch 2.13, SlangPy 0.42.0); examples 01–06. Not benchmarked |
 
 Details and exact counts are in [TEST_COVERAGE.md](TEST_COVERAGE.md)
 (*Installed-artifact checks* and *Performance, service and shipped examples*).

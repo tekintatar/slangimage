@@ -1670,6 +1670,17 @@ current Twine 7, and a clean Python 3.12 Metal installed-wheel smoke. These
 were pre-release builds, not published release artifacts. Windows and a Python-
 version-by-Linux-backend cross-product were not tested.
 
+Validation 2026-11-02, 0.1.0 release source, on two NVIDIA generations: an L40S
+(Ada) and an RTX PRO 4500 Blackwell (compute capability 12.0), both Ubuntu
+24.04, driver 580.126.16, Python 3.12.3, SlangPy 0.42.0, PyTorch 2.13.0+cu130
+and slangpy-torch 0.7.0. On each, the wheel and sdist passed Twine 7 and the
+88-file archive checker, and full suites imported the installed wheel from
+outside the source tree: CUDA passed **5069 tests** (4933 selected-backend
+texture/host, 11 AUTO lifecycle and 125 CUDA autograd) and Vulkan passed
+**4944 tests** plus the three expected CUDA-only collection skips. Examples
+01–05 completed on CUDA and Vulkan and 06 on CUDA; the installed-artifact
+validator passed on CUDA and Vulkan; the packaged playground answered HTTP 200.
+
 ### Performance, service and shipped examples (outside pytest)
 
 Protocol v2 was rerun without changing its suite or methodology. The published

@@ -51,7 +51,8 @@ First public release (0.1.0).
   three-step install (docs/INSTALL_TORCH.md). It is pinned to PyTorch 2.13 and
   SlangPy 0.42 because SlangPy 0.43's bundled compiler hangs in one generated
   backward pass (docs/UPSTREAM_ISSUES.md).
-- Validated on Apple Silicon (Metal) and NVIDIA L40S (CUDA, Vulkan) on Ubuntu
-  24.04; Windows and other GPUs are untested (docs/PLATFORM_NOTES.md).
+- Validated on Apple Silicon (Metal) and on NVIDIA L40S and RTX PRO 4500
+  Blackwell (CUDA, Vulkan) on Ubuntu 24.04; Windows and other GPUs are untested
+  (docs/PLATFORM_NOTES.md).
 - Native SlangPy device memory is not fully returned until process exit after
   `release_device()`; long-running services should keep one device.
