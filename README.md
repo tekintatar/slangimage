@@ -477,8 +477,10 @@ and [CONTRIBUTING.md](https://github.com/tekintatar/slangimage/blob/main/CONTRIB
 
 ## License
 
+Copyright 2026 BeFunky, Inc. and Tekin Tatar. Licensed under
 [Apache-2.0](https://github.com/tekintatar/slangimage/blob/main/LICENSE) — same license as slangpy upstream; permissive for
-commercial use with an explicit patent grant.
+commercial use with an explicit patent grant (see
+[NOTICE](https://github.com/tekintatar/slangimage/blob/main/NOTICE)).
 
 SlangImage is built on Slang and slangpy but is not affiliated with the Slang
 project or Khronos.
