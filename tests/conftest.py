@@ -22,6 +22,15 @@ CUDA_AUTOGRAD_TEST_FILES = {
 }
 
 
+def pytest_collection_modifyitems(config, items):
+    """Mark every test that needs a GPU, so `pytest -m "not gpu"` runs the
+    GPU-free remainder (lint-level CI, machines without a supported GPU)."""
+    for item in items:
+        if ("ctx" in item.fixturenames or item.get_closest_marker("auto_device")
+                or item.path.name in CUDA_AUTOGRAD_TEST_FILES):
+            item.add_marker(pytest.mark.gpu)
+
+
 @pytest.fixture(scope="session")
 def ctx(request):
     backend = os.environ.get("SLANGIMAGE_BACKEND", "auto")

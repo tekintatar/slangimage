@@ -45,10 +45,10 @@ def _load_run(path: str) -> dict[str, Any]:
                 f"{path}: record {index} uses {record['iters']} iterations, "
                 f"but meta.iters is {meta['iters']}"
             )
-        key = (record["op"], record["size"], record["precision"])
-        if key in seen:
-            raise ValueError(f"{path}: duplicate benchmark cell {key!r}")
-        seen.add(key)
+        cell = (record["op"], record["size"], record["precision"])
+        if cell in seen:
+            raise ValueError(f"{path}: duplicate benchmark cell {cell!r}")
+        seen.add(cell)
     return run
 
 

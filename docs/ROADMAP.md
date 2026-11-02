@@ -78,9 +78,9 @@ autograd, packaging/support-matrix and performance validation work recorded in
     `test_nn.py`: fp32 sampled finite differences, analytic derivatives, and
     NumPy/torch references/invariants).
     It runs on a CUDA machine with `auto`/`cuda` selection and available
-    torch/CUDA. Metal/Vulkan runs exclude all three files. No GitHub-hosted CI
-    is enabled; a CUDA run with skipped autograd modules is not gradient
-    validation.
+    torch/CUDA. Metal/Vulkan runs exclude all three files. Hosted CI has no
+    GPU and does not run them; a CUDA run with skipped autograd modules is not
+    gradient validation.
   - **Backward-pass benchmark vs kornia + torchvision v2** — landed and
     refreshed 2026-09-12 (benchmarks/compare_kornia_diff.py, reference numbers
     + honest notes in header): bilateral training step 93–97× faster than
@@ -182,9 +182,9 @@ torchvision have that si.ops lacks — the parity set to build:
   parameters, defaults and clipping).
 - **Hugging Face Space** of the playground (CUDA via the pip NVRTC shim), so
   the operators can be tried without installing.
-- Release validation stays explicit rather than CI-driven: generic hosted
-  runners cannot execute the supported GPU matrix, so ruff/mypy, archive and
-  fresh-install checks and each GPU group run on real hardware before a
+- GPU validation stays explicit rather than CI-driven: hosted CI runs only
+  the GPU-free checks (lint, types, `-m "not gpu"` tests, archive build), so
+  fresh-install checks and each GPU group still run on real hardware before a
   release, with CUDA autograd reported separately.
 
 ## Later / ideas

@@ -15,8 +15,13 @@ issues are in the README and [docs/PLATFORM_NOTES.md](docs/PLATFORM_NOTES.md).
 ```bash
 python3.12 -m venv .venv && . .venv/bin/activate   # or 3.10, 3.11, 3.13
 pip install -e ".[dev]"      # texture ops on Metal, CUDA or Vulkan
+python -m slangimage          # setup report: which GPU backends work, and why not
 pytest                        # runs on the auto-selected backend
 ```
+
+If a backend fails or the tests cannot find a GPU, start with
+`python -m slangimage`: it runs a test kernel on each backend and reports the
+reason for every failure (paste its output into bug reports).
 
 For the differentiable ops (Linux + NVIDIA), build SlangPy's torch bridge
 before the editable install; the prerequisites are in the README's *PyTorch
@@ -58,18 +63,27 @@ A CUDA release check with skipped autograd modules has not validated gradients.
 Use `-ra` to inspect skip reasons and record the actual device/dependency stack.
 See the [operator evidence map and reporting rules](docs/TEST_COVERAGE.md).
 
-## Linting
+## Checking a change
+
+One command runs everything a change needs locally — whitespace, ruff, mypy
+(the package and the typing contract in `typing_tests/`) and the test suite on
+your GPU:
 
 ```bash
-ruff check src/ tests/ scripts/ examples/
-mypy                          # typing contract in typing_tests/ (configured in pyproject.toml)
+scripts/check.sh                       # SLANGIMAGE_BACKEND=metal|cuda|vulkan to pick a backend
+scripts/check.sh --no-gpu              # only the tests that need no GPU
+scripts/check.sh -k bilateral          # extra arguments go to pytest
 ```
 
-No GitHub-hosted CI workflow is enabled. Generic hosted runners cannot execute
-the supported GPU matrix, so pushes and pull requests do not launch GitHub
-Actions. Run ruff, mypy and the test suite on the GPU backend(s) you have
-before opening a PR, and state in the PR which backend, device and dependency
-versions you tested. Maintainers additionally run artifact validation,
+Tests that need a GPU carry the `gpu` marker (applied automatically to tests
+that use the `ctx` fixture, AUTO-device tests and the CUDA autograd modules);
+mark any other test that creates a device yourself.
+
+GitHub Actions runs `scripts/check.sh --no-gpu` on Python 3.10, 3.12 and 3.13,
+shellcheck, and the reproducible wheel/sdist build with its archive checks on
+every pull request. Hosted runners have no supported GPU, so run the GPU tests
+on the backend(s) you have before opening a PR, and state in the PR which
+backend, device and dependency versions you tested. Maintainers additionally run artifact validation,
 fresh-install checks and the other GPU suites: Metal on Apple Silicon, and
 CUDA/Vulkan on a Linux NVIDIA host set up with the helper scripts in
 `scripts/cuda_box/`. Record the actual device and dependency stack before
@@ -138,7 +152,7 @@ register a directory with `ModuleCache.add_ops_dir()` (see
 ## Pull requests
 
 - Keep PRs focused; one operator or one fix per PR where possible.
-- Run `ruff` and `pytest` (on at least one backend) before pushing.
+- Run `scripts/check.sh` (on at least one GPU backend) before pushing.
 - Update `CHANGELOG.md` under the `Unreleased` heading.
 - By contributing you agree your work is licensed under the project's
   [Apache-2.0](LICENSE) license.

@@ -83,7 +83,7 @@ def alloc_output(
 def _tex_key(tex: spy.Texture) -> Tuple[int, int, int, int]:
     d = tex.desc
     fmt = d.format
-    fmt_id = int(fmt.value) if hasattr(fmt, "value") else int(fmt)
+    fmt_id = int(fmt.value)
     return (int(tex.width), int(tex.height), fmt_id, int(d.usage))
 
 
@@ -169,7 +169,7 @@ class TexturePool:
     ) -> spy.Texture:
         self._check_thread()
         self._drain_pending()
-        fmt_id = int(fmt.value) if hasattr(fmt, "value") else int(fmt)
+        fmt_id = int(fmt.value)
         key = (int(width), int(height), fmt_id, int(usage))
         lst = self._free.get(key)
         if lst:

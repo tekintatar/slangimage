@@ -53,6 +53,7 @@ explicitly: a bare `python3` can be too old (Apple's 3.9) or too new
 ```bash
 python3.12 -m venv .venv && . .venv/bin/activate   # or 3.10, 3.11, 3.13
 pip install slangimage
+python -m slangimage      # setup report: which GPU backends work, and why not
 ```
 
 On Debian/Ubuntu, `sudo apt install python3-venv` first (system `pip` refuses

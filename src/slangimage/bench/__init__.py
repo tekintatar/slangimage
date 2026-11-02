@@ -133,7 +133,7 @@ def run(backend: str = "auto", iters: int = DEFAULT_ITERS, sizes: list[int] | No
     for precision in PRECISIONS:
         for size in sizes:
             img = make_image(size).astype(np.float16 if precision == "fp16" else np.float32)
-            src = np_to_texture(device, img, usage="read", precision=precision)
+            src: spy.Texture | None = np_to_texture(device, img, usage="read", precision=precision)
             device.wait_for_idle()
 
             for name, fn in cases:
@@ -196,7 +196,7 @@ def run(backend: str = "auto", iters: int = DEFAULT_ITERS, sizes: list[int] | No
             "platform": platform.platform(),
             "cpu": platform.processor() or platform.machine(),
             "python": sys.version.split()[0],
-            "slangpy": spy.__version__,
+            "slangpy": spy.__version__,  # type: ignore[attr-defined]  # missing from the stubs
             "slangimage": slangimage.__version__,
             "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "iters": iters,

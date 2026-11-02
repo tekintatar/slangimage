@@ -1,0 +1,56 @@
+# GPU-free checks on every push to main and every pull request. Hosted runners
+# have no supported GPU, so the GPU test suites (Metal, CUDA, Vulkan) remain a
+# manual release step; see CONTRIBUTING.md.
+name: checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  no-gpu:
+    name: Lint, types, GPU-free tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Check (whitespace, ruff, mypy, pytest -m "not gpu")
+        run: scripts/check.sh --no-gpu -ra
+      - name: Shell scripts
+        run: shellcheck scripts/check.sh scripts/cuda_box/*.sh
+      - name: Setup report runs without a GPU
+        run: |
+          python -m slangimage --json > report.json || true
+          python -c "import json; r = json.load(open('report.json')); assert r['auto_backend'] is None, r; print('setup report OK: no GPU backend, as expected')"
+
+  package:
+    name: Build and check the wheel and sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build (reproducible)
+        run: |
+          python -m pip install build==1.4.0 twine==7.0.0
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct) \
+            PIP_CONSTRAINT=build-constraints.txt python -m build
+      - name: Check archives
+        run: |
+          python scripts/check_artifacts.py dist
+          twine check dist/*

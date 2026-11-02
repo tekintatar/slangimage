@@ -13,7 +13,14 @@ notes (interpreter paths, GPU hosts, identities) in your own untracked
   3.10–3.13 virtual environment with `pip install -e ".[dev]"`; the suite
   needs a GPU and uses one device via `tests/conftest.py`
   (`SLANGIMAGE_BACKEND=metal|cuda|vulkan` selects it).
-- Lint/types: `ruff check src/ tests/ scripts/ examples/` and `mypy`.
+- **Before finishing a change, run `scripts/check.sh`** (whitespace, ruff,
+  mypy over the package, tests on the available GPU; `--no-gpu` without one;
+  extra arguments go to pytest, e.g. `-k bilateral`). If you could not run the
+  GPU tests on a backend your change affects (CUDA autograd needs an NVIDIA
+  GPU), say so instead of implying they passed.
+- Setup problems: `python -m slangimage` runs a test kernel on every backend
+  and explains each failure. New tests that create a device without the `ctx`
+  fixture need `@pytest.mark.gpu`.
 - Playground: `python playground/app.py` → localhost:7860 (Gradio).
 - Benchmarks: `slangimage-bench run/report` (protocol versioned — changing
   the suite/methodology requires a PROTOCOL_VERSION bump; docs/BENCHMARKING.md).

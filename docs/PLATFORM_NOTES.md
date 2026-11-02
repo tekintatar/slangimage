@@ -32,6 +32,12 @@ Linux: install NVRTC* (the runtime compiler the CUDA backend needs) and
 
 ## Choosing and checking the backend
 
+- `python -m slangimage` prints a setup report: versions, the NVIDIA driver,
+  and for each of Metal, CUDA and Vulkan whether a test kernel compiles and
+  returns the right values, with the reason for every failure, plus which
+  backend automatic selection picks and whether the PyTorch differentiable ops
+  work. It exits with status 1 when no backend works. `--json` gives the same
+  report as JSON; include it in bug reports.
 - Automatic selection tries Metal and then Vulkan on macOS, and CUDA and then
   Vulkan on other systems. The CPU is never used: kernels require a GPU, and
   requesting the CPU backend raises an error.
@@ -167,7 +173,7 @@ operator.
 | Error message (beginning) | Meaning |
 |---|---|
 | `No matching distribution found for slangpy`, or pip installs `slangimage` 0.0.1 | No SlangImage/SlangPy wheel matches this interpreter or platform (Python outside 3.10–3.13, Intel Mac, macOS 14 or earlier, or Linux with glibc older than 2.34). pip then fails or falls back to 0.0.1, an early placeholder release. Use a supported platform and interpreter (for example `python3.12 -m venv .venv`). |
-| `no supported GPU device found — slangimage needs a Metal, CUDA, or Vulkan GPU.` | Automatic selection could not create any GPU device. On Linux + NVIDIA, check the CUDA prerequisites and the Vulkan driver. |
+| `no supported GPU device found — slangimage needs a Metal, CUDA, or Vulkan GPU.` | Automatic selection could not create any GPU device. Run `python -m slangimage` to see why each backend failed. On Linux + NVIDIA, check the CUDA prerequisites and the Vulkan driver. |
 | `[ERROR] (rhi) layer: Cannot find CUDA nvrtc` | NVRTC is not installed or not found; automatic selection continues on Vulkan. Install NVRTC as described in the README (*CUDA on Linux: install NVRTC*). |
 | `CUDA_ERROR_UNSUPPORTED_PTX_VERSION` | The installed NVRTC is newer than the "CUDA Version" supported by the driver (see `nvidia-smi`); install a matching NVRTC. |
 | `could not create a <backend> device (Failed to create device!)` | The explicitly requested backend is not available on this machine; the rest of the message says what that backend needs (on Linux, `si.device("cuda")` raises this when NVRTC is missing). |

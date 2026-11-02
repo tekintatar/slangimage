@@ -1502,6 +1502,7 @@ apt NVRTC, driver-only and fully configured pip setups behave as before.
 | `GaussianBlurEffect` | [smoke][smoke]: `test_effect_smoke`; [regressions][regressions]: `test_effect_parameter_contracts` (functional parity) | fp32; constituent ops prewarmed, no effect registry entry |
 | `SoftGlowEffect` | [smoke][smoke]: smoke; [public][public]: `test_effect_accepts_image`; [regressions][regressions]: parameter contracts; [pool][pool]: repeatability/retained-output checks | fp32 smoke, fp16 API; constituent ops only |
 | `from_torch`, `Image.to_torch` | [torch-conversion][torch-conversion]: exact round trips in both layouts, alpha handling, RGB→opaque RGBA, precision inference (float16/float32/bfloat16/float64), input validation; CUDA-tensor case runs only where torch has CUDA | Selected device, fp16 and fp32; host-memory copy |
+| `python -m slangimage` (setup report) | [doctor][doctor]: the selected backend passes its test kernel; with every device creation failing, all failures are reported and the exit status is 1; AUTO preference order per platform | Selected device; fp32 |
 | `KuwaharaPaintEffect` | [smoke][smoke]: smoke; [regressions][regressions]: constant-color invariant | fp32; constituent ops only |
 
 ## CUDA tensor operators (`si.diff`) and modules (`si.nn`)
@@ -1632,8 +1633,9 @@ with `--gpu-smoke` explicitly selects its requested backend and uses fp32 input.
 It checks `invert` against a constant-color/alpha reference and shape/finite
 output for `tile`, `cmyk_halftone`, and `clahe`. It adds neither fp16 numerical
 coverage nor autograd checks. Its results are separate from pytest group counts.
-There is no hosted CI workflow; artifact validation is run explicitly on a local
-Metal machine and on a Linux NVIDIA host for CUDA/Vulkan.
+Hosted CI builds the archives and runs the archive checker, but installed-wheel
+GPU validation is run explicitly on a local Metal machine and on a Linux NVIDIA
+host for CUDA/Vulkan.
 
 The 2026-09-12 support/artifact pass built the wheel and sdist twice with the
 same source epoch and obtained byte-identical pairs. Both passed Twine plus the
@@ -1768,14 +1770,16 @@ Important limits:
 - Same-backend fp16/fp32 PSNR is not cross-backend parity. The capture harness
   now compares common Metal/CUDA/Vulkan inputs explicitly, but pytest alone does
   not orchestrate three machines or enforce a permanent golden-output archive.
-- No GitHub Actions workflow is enabled: the generic hosted runners do not meet
-  this project's GPU validation requirements. Metal runs locally; CUDA/Vulkan
-  run on a Linux NVIDIA host (helper scripts in `scripts/cuda_box/`). A
-  command/configuration is not evidence of a run.
+- GitHub Actions runs only the GPU-free checks (`scripts/check.sh --no-gpu`,
+  shellcheck, archive build): hosted runners have no supported GPU. Metal runs
+  locally; CUDA/Vulkan run on a Linux NVIDIA host (helper scripts in
+  `scripts/cuda_box/`). A command/configuration is not evidence of a run.
 
 For separate test selections:
 
 ```bash
+# Everything that needs no GPU (what hosted CI runs; `gpu` is applied in conftest.py)
+pytest tests/ -m 'not gpu' -q -ra
 # Selected texture fixture + host checks; exclude AUTO and autograd
 SLANGIMAGE_BACKEND=vulkan pytest tests/ -m 'not auto_device' --ignore=tests/test_diff.py --ignore=tests/test_diff_core_contracts.py --ignore=tests/test_nn.py -q -ra
 # Intentional automatic-device API/lifecycle checks only
@@ -1869,6 +1873,7 @@ evidence strength, not just the number of test functions.
 [threading-contracts]: ../tests/test_threading_contracts.py
 [threading-stress]: ../scripts/threading_stress.py
 [smoke]: ../tests/test_smoke.py
+[doctor]: ../tests/test_doctor.py
 [torch-conversion]: ../tests/test_torch_conversion.py
 [diff]: ../tests/test_diff.py
 [diff-core]: ../tests/test_diff_core_contracts.py

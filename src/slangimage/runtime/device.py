@@ -271,7 +271,7 @@ class DeviceManager:
             shaders_root / "ops",
         ]
 
-        compiler_options = {
+        compiler_options: spy.SlangCompilerOptionsDict = {
             "include_paths": [str(p) for p in include_paths],
             # optional, but matches their helpers.py example
             "debug_info": spy.SlangDebugInfoLevel.none,
