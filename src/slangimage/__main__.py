@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import platform
 import shutil
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Iterator
 
 BACKENDS = ("metal", "cuda", "vulkan")
 ENV_VARS = ("SLANGIMAGE_BACKEND", "SLANGIMAGE_POOL_BUDGET_MB", "CUDA_PATH", "LD_LIBRARY_PATH")
@@ -104,7 +105,42 @@ def _torch_status() -> dict[str, Any]:
     return status
 
 
+@contextlib.contextmanager
+def _native_output_to_stderr() -> Iterator[None]:
+    """Native libraries print diagnostics straight to file descriptor 1 (for
+    example a missing CUDA driver symbol when no NVIDIA driver is installed);
+    send them to stderr so stdout carries only the report."""
+    sys.stdout.flush()
+    try:
+        saved = os.dup(1)
+    except OSError:  # no usable fd 1 (embedded interpreters): leave it alone
+        yield
+        return
+    try:
+        os.dup2(2, 1)
+        yield
+    finally:
+        sys.stdout.flush()
+        _flush_c_stdio()  # native text sits in C's stdio buffer until flushed
+        os.dup2(saved, 1)
+        os.close(saved)
+
+
+def _flush_c_stdio() -> None:
+    try:
+        import ctypes
+
+        ctypes.CDLL(None).fflush(None)
+    except (OSError, AttributeError, TypeError):  # no C runtime handle (e.g. Windows)
+        pass
+
+
 def collect() -> dict[str, Any]:
+    with _native_output_to_stderr():
+        return _collect()
+
+
+def _collect() -> dict[str, Any]:
     results = {backend: check_backend(backend) for backend in BACKENDS}
     return {
         "versions": _versions(),

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -38,6 +39,22 @@ def test_report_without_any_gpu(monkeypatch, capsys):
     assert report["auto_backend"] is None
     assert not any(result["ok"] for result in report["backends"].values())
     assert set(report["environment"].values()) <= {"set", "not set"}
+
+
+def test_native_stdout_noise_goes_to_stderr(monkeypatch, capfd):
+    # Without an NVIDIA driver, SlangPy's native code writes to fd 1 directly.
+    def noisy_failure(backend):
+        os.write(1, b"native noise\n")
+        return {"ok": False, "error": "unavailable (test)"}
+
+    monkeypatch.setattr(doctor, "check_backend", noisy_failure)
+    monkeypatch.setattr(doctor, "_nvidia_driver", lambda: None)
+    monkeypatch.setattr(doctor, "_torch_status", lambda: {"installed": False})
+
+    assert doctor.main(["--json"]) == 1
+    out, err = capfd.readouterr()
+    assert json.loads(out)["auto_backend"] is None
+    assert "native noise" in err and "native noise" not in out
 
 
 @pytest.mark.parametrize("darwin,working,expected", [
