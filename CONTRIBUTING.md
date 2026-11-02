@@ -79,7 +79,7 @@ Tests that need a GPU carry the `gpu` marker (applied automatically to tests
 that use the `ctx` fixture, AUTO-device tests and the CUDA autograd modules);
 mark any other test that creates a device yourself.
 
-GitHub Actions runs `scripts/check.sh --no-gpu` on Python 3.10, 3.12 and 3.13,
+GitHub Actions runs `scripts/check.sh --no-gpu` on Python 3.10 and 3.13,
 shellcheck, and the reproducible wheel/sdist build with its archive checks on
 every pull request. Hosted runners have no supported GPU, so run the GPU tests
 on the backend(s) you have before opening a PR, and state in the PR which
