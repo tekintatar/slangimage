@@ -1501,6 +1501,7 @@ apt NVRTC, driver-only and fully configured pip setups behave as before.
 | `identity_lut_np` | [regressions][regressions]: `test_identity_lut_size_validation`; [lut][lut]: `test_identity_lut_builder_matches_grid_coordinates` at five sizes | Host float32 array; uploaded fp16/fp32 in tests and used by prewarm |
 | `GaussianBlurEffect` | [smoke][smoke]: `test_effect_smoke`; [regressions][regressions]: `test_effect_parameter_contracts` (functional parity) | fp32; constituent ops prewarmed, no effect registry entry |
 | `SoftGlowEffect` | [smoke][smoke]: smoke; [public][public]: `test_effect_accepts_image`; [regressions][regressions]: parameter contracts; [pool][pool]: repeatability/retained-output checks | fp32 smoke, fp16 API; constituent ops only |
+| `from_torch`, `Image.to_torch` | [torch-conversion][torch-conversion]: exact round trips in both layouts, alpha handling, RGB→opaque RGBA, precision inference (float16/float32/bfloat16/float64), input validation; CUDA-tensor case runs only where torch has CUDA | Selected device, fp16 and fp32; host-memory copy |
 | `KuwaharaPaintEffect` | [smoke][smoke]: smoke; [regressions][regressions]: constant-color invariant | fp32; constituent ops only |
 
 ## CUDA tensor operators (`si.diff`) and modules (`si.nn`)
@@ -1868,6 +1869,7 @@ evidence strength, not just the number of test functions.
 [threading-contracts]: ../tests/test_threading_contracts.py
 [threading-stress]: ../scripts/threading_stress.py
 [smoke]: ../tests/test_smoke.py
+[torch-conversion]: ../tests/test_torch_conversion.py
 [diff]: ../tests/test_diff.py
 [diff-core]: ../tests/test_diff_core_contracts.py
 [nn]: ../tests/test_nn.py

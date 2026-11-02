@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import numpy as np
 from PIL import Image as PILImage
@@ -22,7 +22,11 @@ from .runtime.textures import (
     save_texture_to_image,
 )
 
+if TYPE_CHECKING:
+    import torch
+
 _SUPPORTED_IMAGE_FORMATS = {spy.Format.rgba16_float, spy.Format.rgba32_float}
+_TORCH_LAYOUTS = ("hwc", "chw")
 
 
 def _validate_image_texture(texture: spy.Texture) -> spy.Texture:
@@ -99,6 +103,30 @@ class Image:
     def to_pil(self) -> PILImage.Image:
         return texture_to_pil(self.texture)
 
+    def to_torch(
+        self, device: Any = None, layout: str = "hwc", alpha: bool = False
+    ) -> "torch.Tensor":
+        """Copy into a new torch tensor. Lossless, but not zero-copy: the data
+        goes through host memory, like :meth:`to_numpy`.
+
+        dtype follows storage: float16 for fp16 images, float32 for fp32.
+        ``layout="hwc"`` gives (H, W, C), the layout ``slangimage.diff`` takes;
+        ``"chw"`` gives (C, H, W) for torch models (``unsqueeze(0)`` makes a
+        batch of one). C is 3 unless ``alpha=True``. ``device`` is any torch
+        device (e.g. ``"cuda"``); ``None`` keeps the tensor on the CPU. Needs
+        PyTorch, but not the ``torch`` extra.
+        """
+        torch = _import_torch("Image.to_torch")
+        _check_layout(layout)
+        arr = self.to_numpy()
+        if not alpha:
+            arr = arr[..., :3]
+        if layout == "chw":
+            arr = arr.transpose(2, 0, 1)
+        dtype = torch.float16 if self.precision == "fp16" else torch.float32
+        tensor = torch.from_numpy(np.ascontiguousarray(arr)).to(dtype)
+        return tensor if device is None else tensor.to(device)
+
     def save(self, path: str | Path, quality: int = 95) -> str:
         """Write to disk (JPEG quality applies to .jpg/.jpeg only)."""
         return save_texture_to_image(self.texture, str(path), quality=quality)
@@ -156,6 +184,69 @@ def from_numpy(
         precision = "fp16" if arr.dtype == np.float16 else "fp32"
     device = _resolve_device(device)
     return Image(np_to_texture(device, arr, usage="read", precision=precision))
+
+
+def from_torch(
+    tensor: "torch.Tensor",
+    layout: str = "hwc",
+    precision: Optional[str] = None,
+    device: spy.Device | Backend | str | None = None,
+) -> Image:
+    """Copy one image from a float torch tensor in [0, 1] (any torch device).
+
+    The tensor is (H, W, C) for ``layout="hwc"`` or (C, H, W) for ``"chw"``,
+    with C = 3 or 4 (3 is expanded to opaque RGBA). Batches are not accepted:
+    convert each image, e.g. ``[si.from_torch(t, layout="chw") for t in x]``.
+    precision defaults to fp16 for float16 tensors, fp32 otherwise (bfloat16
+    and float64 are converted). ``device`` selects the SlangImage device as for
+    :func:`from_numpy`; the data is copied through host memory. Gradients are
+    not tracked.
+    """
+    torch = _import_torch("from_torch")
+    if not isinstance(tensor, torch.Tensor):
+        raise TypeError(f"expected a torch.Tensor, got {type(tensor).__name__}")
+    _check_layout(layout)
+    if tensor.dim() != 3:
+        raise ValueError(
+            f"expected one image as a 3-D tensor, got shape {tuple(tensor.shape)}; "
+            "for a batch, convert each image separately"
+        )
+    if not tensor.is_floating_point():
+        raise ValueError(
+            f"expected a float tensor in [0, 1], got dtype {tensor.dtype}; "
+            "normalize first, e.g. tensor.float() / 255"
+        )
+    channels = tensor.shape[0] if layout == "chw" else tensor.shape[-1]
+    if channels not in (3, 4):
+        hint = ' (pass layout="chw" for C, H, W tensors)' if layout == "hwc" else ""
+        raise ValueError(
+            f"expected 3 or 4 channels, got shape {tuple(tensor.shape)} "
+            f"with layout {layout!r}{hint}"
+        )
+    if precision is None:
+        precision = "fp16" if tensor.dtype == torch.float16 else "fp32"
+    data = tensor.detach()
+    if layout == "chw":
+        data = data.permute(1, 2, 0)
+    if data.dtype not in (torch.float16, torch.float32):
+        data = data.float()
+    return from_numpy(data.contiguous().cpu().numpy(), precision=precision, device=device)
+
+
+def _import_torch(caller: str) -> Any:
+    try:
+        import torch
+    except ImportError:
+        raise ImportError(
+            f"{caller} needs PyTorch (pip install torch); the slangimage "
+            "'torch' extra is only required for slangimage.diff."
+        ) from None
+    return torch
+
+
+def _check_layout(layout: str) -> None:
+    if layout not in _TORCH_LAYOUTS:
+        raise ValueError(f"layout must be 'hwc' or 'chw', got {layout!r}")
 
 
 def from_pil(

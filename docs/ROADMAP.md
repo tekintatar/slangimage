@@ -189,8 +189,10 @@ torchvision have that si.ops lacks — the parity set to build:
 
 ## Later / ideas
 
-- `Image.to_torch()` zero-copy on CUDA (share device with
-  `spy.create_torch_device()`); batch API (B×H×W×C).
+- Zero-copy torch interop on CUDA: `Image.to_torch()` / `si.from_torch()`
+  copy through host memory today; sharing the device with
+  `spy.create_torch_device()` plus a texture-to-buffer copy kernel would keep
+  the data on the GPU. Batch API (B×H×W×C).
 - Video: temporal ops, stream processing on the pooled path.
 - Playground: "export pipeline as Python" button; before/after slider.
 - Shader disk cache to cut cold-start compilation (CUDA first call, compile +

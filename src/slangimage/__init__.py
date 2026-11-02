@@ -14,7 +14,7 @@ from __future__ import annotations
 
 __version__ = "0.1.0"
 
-from .image import Image, load, from_numpy, from_pil, device, wrap_pooled
+from .image import Image, load, from_numpy, from_pil, from_torch, device, wrap_pooled
 
 from .runtime import (
     Backend,
@@ -37,6 +37,7 @@ __all__ = [
     "load",
     "from_numpy",
     "from_pil",
+    "from_torch",
     "device",
     "wrap_pooled",
     "prewarm",

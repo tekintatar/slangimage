@@ -183,6 +183,51 @@ selection), 06 needs CUDA and the `torch` extra. Rendered images go to
 `examples/out/`; without your own images in `test_images/` (or
 `SLANGIMAGE_TEST_IMAGES`), a synthetic input is generated there on first run.
 
+### Quick start: PyTorch (CUDA)
+
+`img.to_torch()` and `si.from_torch()` copy images to and from torch tensors
+on any backend (they need only `torch`). The differentiable ops in
+`slangimage.diff` / `slangimage.nn` need the [`torch` extra](#pytorch-extra-slangimagetorch)
+and an NVIDIA GPU, and take one image at a time as a float32 `(H, W, 3)` CUDA
+tensor:
+
+```python
+import torch
+import slangimage as si
+import slangimage.diff as sid
+import slangimage.nn as snn
+
+photo = si.load("photo.jpg").to_torch(device="cuda").float()    # (H, W, 3) float32
+
+# gradients flow through fused forward and backward kernels
+x = photo.clone().requires_grad_()
+out = sid.sepia(sid.bilateral(x, radius=5, sigma_range=0.15), intensity=0.8)
+out.mean().backward()                                            # x.grad is set
+
+# learn a color grade as a LUT from an (original, edited) pair of the same size
+edited = si.load("photo_edited.jpg").to_torch(device="cuda").float()
+grade = snn.Lut().cuda()                                         # identity LUT, learnable
+opt = torch.optim.Adam(grade.parameters(), lr=5e-2)
+for step in range(100):
+    loss = (grade(photo) - edited).pow(2).mean()
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+si.from_torch(grade(photo).detach().clamp(0, 1)).save("graded.png")
+
+# the trained LUT is a preset for the texture path (any backend, no torch needed)
+lut_image = si.from_torch(grade.lut.detach())
+si.ops.lut(si.load("another.jpg"), lut_image).save("another_graded.png")
+
+# torch models use NCHW batches; slangimage takes one HWC image per call
+nchw = photo.permute(2, 0, 1).unsqueeze(0)                       # (1, 3, H, W)
+hwc = nchw[0].permute(1, 2, 0)                                   # back to (H, W, 3)
+```
+
+`to_torch(layout="chw")` returns `(C, H, W)` directly, and `alpha=True` keeps
+the alpha channel. Both conversions are lossless copies through host memory,
+not zero-copy views.
+
 ### Choosing a backend
 
 The device is chosen automatically — Metal on macOS, CUDA elsewhere, with
@@ -279,13 +324,10 @@ img = torch.rand(512, 512, 3, device="cuda", requires_grad=True)
 out = sid.bilateral(img, radius=5, sigma_range=0.15)   # edge-preserving; gradients reach img
 out = sid.sepia(out, intensity=0.8)
 out.mean().backward()                                  # fused backward kernels
-
-# the headline: learn a color grade as a LUT from example pairs
-target = sid.sepia(img, intensity=0.8).detach()        # your example output
-identity = si.ops.identity_lut_np()[..., :3].copy()    # (512, 512, 3) identity CLUT
-lut = torch.nn.Parameter(torch.tensor(identity, device="cuda"))
-loss = (sid.lut(img, lut) - target).pow(2).mean()      # optimize `lut` with Adam
 ```
+
+The [PyTorch quick start](#quick-start-pytorch-cuda) shows a complete
+training loop that learns a color grade as a LUT.
 
 Available: `gaussian_blur`, `bilateral` (hand-written gather backward —
 roughly 80–105× faster per training step than kornia at 1–4 MP on L40S hosts
@@ -311,7 +353,7 @@ device or the SlangPy torch bridge is missing.
 import slangimage.nn as snn
 
 grade = torch.nn.Sequential(snn.Bilateral(radius=5), snn.Lut()).cuda()
-loss = (grade(img) - target).pow(2).mean()   # the LUT is an nn.Parameter
+out = grade(img)                             # the LUT is an nn.Parameter
 ```
 
 ## Precision

@@ -23,6 +23,9 @@ First public release (0.1.0).
   readback through `to_numpy()` is lossless and clipping happens only on
   request or when saving. Three-channel inputs are expanded to RGBA on upload,
   EXIF orientation is honored and 16-bit images keep their full range.
+- `Image.to_torch()` and `si.from_torch()`: lossless copies between images and
+  torch tensors in `(H, W, C)` or `(C, H, W)` layout, with or without alpha,
+  on any backend (they need `torch`, not the `torch` extra).
 - Automatic backend selection (Metal on macOS, CUDA elsewhere, Vulkan as the
   fallback). A new CUDA device runs a one-pixel test kernel and falls back to
   Vulkan if it cannot compile; an explicitly requested backend that cannot
