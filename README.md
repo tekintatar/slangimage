@@ -14,6 +14,35 @@ on CUDA. It is not a CPU library, and it processes one RGBA image at a time
 
 **Status: pre-alpha, under active development.** APIs may still change.
 
+## Why SlangImage
+
+Edge-preserving and data-dependent filters — bilateral, CLAHE, non-local
+means, hue/HSV math — run here as one fused GPU kernel per operation. Tensor
+libraries assemble them from generic steps (unfold/im2col windows, per-pixel
+color-space conversions) that materialize many copies of the image, so the gap
+is largest where the math is most complex, and it carries over to training
+memory.
+
+Measured on two NVIDIA GPU generations (L40S and RTX PRO 4500 Blackwell),
+batch 1, 1024² and 2048², fp16 and fp32; ranges span both GPUs:
+
+| Operation | vs kornia | vs torchvision |
+|---|---|---|
+| Bilateral filter, forward | 51–148× faster | no equivalent |
+| Bilateral filter, training step (forward + backward) | 46–97× faster, 158–194× less GPU memory (160 MB vs 25–31 GB at 2048²) | no equivalent |
+| CLAHE | 5–25× faster | no equivalent |
+| Hue rotation, forward | 7–15× faster | 5–28× faster |
+| Gaussian blur 19×19, forward | 3–7× faster | 3–9× faster |
+
+Where it is not faster: tiny per-pixel operations (invert, gamma, grayscale,
+autocontrast) cost about 0.05–0.1 ms per call here, mostly dispatch overhead,
+and torchvision's native kernels are about 2–5× faster at that scale; in
+training, PyTorch's own bilinear resize is about 2–3× faster per step. Results
+depend on library versions: kornia 0.9.0's CLAHE is about 6× faster than
+0.8.3's, which accounts for most of the CLAHE range above. Every cell,
+including the ones SlangImage loses, and the raw data are linked under
+[Benchmarks](#benchmarks).
+
 ## Installation
 
 Requires Python 3.10–3.13 and a Metal, CUDA, or Vulkan GPU — there is no CPU
@@ -361,7 +390,9 @@ Current reference results: [docs/BENCHMARKS.md](https://github.com/tekintatar/sl
 Head-to-head comparisons against kornia and torchvision v2 (latency,
 training-step time, peak VRAM — including the cells we lose, documented
 honestly) live in `benchmarks/compare_augmentation.py` and
-`benchmarks/compare_kornia_diff.py`; reference numbers in each header.
+`benchmarks/compare_kornia_diff.py`, with reference numbers in each header and
+raw results for the L40S, RTX PRO 4500 Blackwell and Apple M3 Max in
+[benchmarks/comparisons/](https://github.com/tekintatar/slangimage/tree/main/benchmarks/comparisons).
 
 ## Development
 

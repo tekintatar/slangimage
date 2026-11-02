@@ -24,7 +24,10 @@
 # Reference run (2026-09-12, NVIDIA L40S, slangimage 0.1.0.dev20260821,
 # slangpy 0.42.0, torch 2.13.0 / kornia 0.8.3 / torchvision 0.28.0,
 # fp32, batch 1; full data:
-# comparisons/results_diff_kornia_l40s.json). slangimage / kornia / torchvision:
+# comparisons/results_diff_kornia_l40s.json; a second run on an NVIDIA RTX PRO
+# 4500 Blackwell, 2026-11-02, slangimage 0.1.0 / kornia 0.9.0, is in
+# comparisons/results_diff_kornia_rtxpro4500.json). slangimage / kornia /
+# torchvision:
 #
 #   1024^2            step ms                peak MB/step
 #   gaussian 19x19    0.81 / 1.18 / 1.20     36 / 61 / 37

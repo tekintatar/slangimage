@@ -1,0 +1,264 @@
+{
+  "device": "NVIDIA RTX PRO 4500 Blackwell Server Edition",
+  "platform": "Linux-6.17.0-14-generic-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "slangimage": "0.1.0",
+  "slangpy": "0.42.0",
+  "torch": "2.13.0+cu130",
+  "kornia": "0.9.0",
+  "torchvision": "0.28.0+cu130",
+  "iters": 20,
+  "dtype": "fp32",
+  "cases": [
+    {
+      "size": 512,
+      "op": "gaussian 19x19",
+      "slangimage": {
+        "fwd_ms": 0.112,
+        "step_ms": 0.352,
+        "peak_mb": 9.0
+      },
+      "kornia": {
+        "fwd_ms": 0.419,
+        "step_ms": 0.617,
+        "peak_mb": 15.3
+      },
+      "torchvision": {
+        "fwd_ms": 0.289,
+        "step_ms": 0.594,
+        "peak_mb": 9.4
+      }
+    },
+    {
+      "size": 512,
+      "op": "bilateral 11x11",
+      "slangimage": {
+        "fwd_ms": 0.144,
+        "step_ms": 0.448,
+        "peak_mb": 11.0
+      },
+      "kornia": {
+        "fwd_ms": 6.081,
+        "step_ms": 17.807,
+        "peak_mb": 1585.1
+      },
+      "torchvision": null
+    },
+    {
+      "size": 512,
+      "op": "sepia",
+      "slangimage": {
+        "fwd_ms": 0.017,
+        "step_ms": 0.1,
+        "peak_mb": 6.0
+      },
+      "kornia": {
+        "fwd_ms": 0.071,
+        "step_ms": 0.254,
+        "peak_mb": 8.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 512,
+      "op": "hue rotate",
+      "slangimage": {
+        "fwd_ms": 0.017,
+        "step_ms": 0.1,
+        "peak_mb": 6.0
+      },
+      "kornia": {
+        "fwd_ms": 0.395,
+        "step_ms": 1.338,
+        "peak_mb": 31.8
+      },
+      "torchvision": null
+    },
+    {
+      "size": 512,
+      "op": "resize bil x0.5",
+      "slangimage": {
+        "fwd_ms": 0.047,
+        "step_ms": 0.172,
+        "peak_mb": 5.3
+      },
+      "kornia": {
+        "fwd_ms": 0.016,
+        "step_ms": 0.062,
+        "peak_mb": 3.8
+      },
+      "torchvision": {
+        "fwd_ms": 0.017,
+        "step_ms": 0.078,
+        "peak_mb": 3.8
+      }
+    },
+    {
+      "size": 1024,
+      "op": "gaussian 19x19",
+      "slangimage": {
+        "fwd_ms": 0.362,
+        "step_ms": 1.14,
+        "peak_mb": 36.0
+      },
+      "kornia": {
+        "fwd_ms": 0.704,
+        "step_ms": 1.18,
+        "peak_mb": 60.6
+      },
+      "torchvision": {
+        "fwd_ms": 0.909,
+        "step_ms": 1.917,
+        "peak_mb": 36.9
+      }
+    },
+    {
+      "size": 1024,
+      "op": "bilateral 11x11",
+      "slangimage": {
+        "fwd_ms": 0.426,
+        "step_ms": 1.504,
+        "peak_mb": 40.0
+      },
+      "kornia": {
+        "fwd_ms": 23.888,
+        "step_ms": 70.024,
+        "peak_mb": 6320.2
+      },
+      "torchvision": null
+    },
+    {
+      "size": 1024,
+      "op": "sepia",
+      "slangimage": {
+        "fwd_ms": 0.029,
+        "step_ms": 0.1,
+        "peak_mb": 24.0
+      },
+      "kornia": {
+        "fwd_ms": 0.095,
+        "step_ms": 0.267,
+        "peak_mb": 32.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 1024,
+      "op": "hue rotate",
+      "slangimage": {
+        "fwd_ms": 0.034,
+        "step_ms": 0.099,
+        "peak_mb": 24.0
+      },
+      "kornia": {
+        "fwd_ms": 0.499,
+        "step_ms": 1.696,
+        "peak_mb": 127.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 1024,
+      "op": "resize bil x0.5",
+      "slangimage": {
+        "fwd_ms": 0.068,
+        "step_ms": 0.246,
+        "peak_mb": 21.0
+      },
+      "kornia": {
+        "fwd_ms": 0.027,
+        "step_ms": 0.071,
+        "peak_mb": 15.0
+      },
+      "torchvision": {
+        "fwd_ms": 0.029,
+        "step_ms": 0.082,
+        "peak_mb": 15.0
+      }
+    },
+    {
+      "size": 2048,
+      "op": "gaussian 19x19",
+      "slangimage": {
+        "fwd_ms": 1.503,
+        "step_ms": 4.842,
+        "peak_mb": 144.0
+      },
+      "kornia": {
+        "fwd_ms": 2.074,
+        "step_ms": 4.009,
+        "peak_mb": 241.3
+      },
+      "torchvision": {
+        "fwd_ms": 3.526,
+        "step_ms": 8.446,
+        "peak_mb": 145.7
+      }
+    },
+    {
+      "size": 2048,
+      "op": "bilateral 11x11",
+      "slangimage": {
+        "fwd_ms": 1.93,
+        "step_ms": 6.494,
+        "peak_mb": 160.0
+      },
+      "kornia": {
+        "fwd_ms": 105.615,
+        "step_ms": 301.341,
+        "peak_mb": 25280.5
+      },
+      "torchvision": null
+    },
+    {
+      "size": 2048,
+      "op": "sepia",
+      "slangimage": {
+        "fwd_ms": 0.138,
+        "step_ms": 0.355,
+        "peak_mb": 96.0
+      },
+      "kornia": {
+        "fwd_ms": 0.594,
+        "step_ms": 1.538,
+        "peak_mb": 128.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 2048,
+      "op": "hue rotate",
+      "slangimage": {
+        "fwd_ms": 0.14,
+        "step_ms": 0.356,
+        "peak_mb": 96.0
+      },
+      "kornia": {
+        "fwd_ms": 2.79,
+        "step_ms": 9.455,
+        "peak_mb": 508.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 2048,
+      "op": "resize bil x0.5",
+      "slangimage": {
+        "fwd_ms": 0.214,
+        "step_ms": 0.699,
+        "peak_mb": 84.0
+      },
+      "kornia": {
+        "fwd_ms": 0.067,
+        "step_ms": 0.264,
+        "peak_mb": 60.0
+      },
+      "torchvision": {
+        "fwd_ms": 0.071,
+        "step_ms": 0.266,
+        "peak_mb": 60.0
+      }
+    }
+  ],
+  "timestamp": "2026-11-02T20:49:58+00:00"
+}

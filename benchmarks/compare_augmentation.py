@@ -29,7 +29,10 @@
 # cells and their ratios vary by up to about +-50% across hosts with the same GPU.
 # Reference runs (2026-09-12, slangimage 0.1.0.dev20260821, slangpy 0.42,
 # torch 2.13 / kornia 0.8.3 / torchvision 0.28; full data:
-# comparisons/results_aug_{cuda,metal}.json).
+# comparisons/results_aug_{cuda,metal}.json). A second CUDA run (2026-11-02,
+# NVIDIA RTX PRO 4500 Blackwell, slangimage 0.1.0, kornia 0.9.0) is in
+# comparisons/results_aug_cuda_rtxpro4500.json; kornia 0.9.0's CLAHE is about
+# 6x faster than 0.8.3's, so that ratio is much smaller there.
 # Selected fp16 ms, slangimage / kornia / torchvision:
 #
 #   1024^2, NVIDIA L40S (CUDA):
