@@ -7,7 +7,9 @@ reaches 1.0.
 
 ## [Unreleased]
 
-First public release (0.1.0).
+## [0.1.0] - 2026-11-02
+
+First public release.
 
 ### Added
 

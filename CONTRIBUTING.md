@@ -112,6 +112,16 @@ the checkout, run
 links absolute (`https://github.com/tekintatar/slangimage/blob/main/...`):
 relative links break on PyPI.
 
+## Releasing
+
+Maintainers release by setting the version in `pyproject.toml`,
+`src/slangimage/__init__.py` and `CITATION.cff`, moving the CHANGELOG entries
+under a dated version heading, and pushing a `vX.Y.Z` tag on `main`. The
+`publish` workflow checks that the tag matches the package version, builds and
+checks the archives reproducibly, and uploads them to PyPI through trusted
+publishing (no stored token). Run the GPU suites on real hardware before
+tagging; CI cannot.
+
 ## Adding an operator
 
 An op is five small pieces:
