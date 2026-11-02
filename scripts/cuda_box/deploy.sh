@@ -12,8 +12,15 @@ if [[ -z "$HOST" ]]; then
 fi
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
+# Never sync anything git ignores (local notes, outputs, environments): honor
+# .gitignore files and, in a clone, the repository's local exclude list.
+FILTERS=(--filter=':- .gitignore')
+if [[ -f "$REPO_ROOT/.git/info/exclude" ]]; then
+    FILTERS+=(--exclude-from="$REPO_ROOT/.git/info/exclude")
+fi
+
 echo "== rsync -> $HOST:~/slangimage =="
-rsync -az --delete \
+rsync -az --delete "${FILTERS[@]}" \
     --exclude '.git' \
     --exclude '.env' \
     --exclude '__pycache__' \
