@@ -1,0 +1,30 @@
+# secrets — never commit
+.env
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# personal editor config
+*.code-workspace
+
+# local scratch images (large binaries). Examples generate a synthetic
+# fallback in-place via examples/_common.py, so no images are tracked.
+test_images/
+
+# example output renders
+examples/out/
+
+# local agent/editor tooling — personal settings, machine-specific launch
+# config and personal agent instructions are not shipped
+.claude/
+CLAUDE.local.md

@@ -1,0 +1,103 @@
+[build-system]
+# >=1.27 for PEP 639 metadata: older hatchling rejects the `license-files` list
+# (1.21) or silently writes legacy license fields (1.26). build-constraints.txt
+# pins the exact backend used for release builds.
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "slangimage"
+version = "0.1.0"
+description = "Cross-platform GPU image processing library built on Slang/slangpy (Metal, CUDA, Vulkan)."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+# upper bound tracks slangpy's available wheels (no cp314 for slangpy 0.42)
+requires-python = ">=3.10,<3.14"
+authors = [{ name = "Tekin Tatar" }]
+keywords = ["image-processing", "gpu", "slang", "slangpy", "cuda", "metal", "vulkan", "pytorch"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: GPU",
+    "Environment :: GPU :: NVIDIA CUDA",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Typing :: Typed",
+]
+dependencies = [
+    "slangpy>=0.42,<0.44",
+    "numpy",
+    "pillow",
+]
+
+[project.urls]
+Homepage = "https://github.com/tekintatar/slangimage"
+Repository = "https://github.com/tekintatar/slangimage"
+Issues = "https://github.com/tekintatar/slangimage/issues"
+Changelog = "https://github.com/tekintatar/slangimage/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff", "mypy>=1.14"]
+# the differentiable path needs torch AND slangpy's torch bridge. slangpy-torch
+# is sdist-only and imports torch at build time, so install torch first, then
+# `pip install --no-build-isolation slangpy-torch==0.7.0` (C++ compiler, Python
+# headers and CUDA 13.0 runtime headers incl. crt/; no nvcc) — see
+# docs/INSTALL_TORCH.md. A one-step `pip install slangimage[torch]` cannot work.
+# Keep this extra on the validated generated-backward stack; base texture users
+# may use the wider slangpy range above.
+torch = ["torch>=2.13,<2.14", "slangpy[torch]==0.42.0"]
+bench = ["nvidia-ml-py"]
+playground = ["gradio"]
+
+[project.scripts]
+slangimage-bench = "slangimage.bench.__main__:main"
+slangimage-playground = "slangimage.playground:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/slangimage"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"playground/app.py" = "slangimage/playground.py"
+
+# The source archive is a rebuildable package, not a snapshot of docs,
+# experiments, or benchmark outputs.
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/slangimage/**/*.py",
+    "/src/slangimage/**/*.slang",
+    "/src/slangimage/py.typed",
+    "/playground/app.py",
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+    "/NOTICE",
+    "/.gitignore",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "auto_device: intentionally exercises automatic device selection, independent of SLANGIMAGE_BACKEND",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["typing_tests"]
+follow_untyped_imports = true
+warn_unused_configs = true

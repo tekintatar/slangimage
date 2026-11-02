@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use SlangImage in your research, please cite it as below."
+title: "SlangImage: cross-platform GPU image processing on Slang/slangpy"
+abstract: >-
+  SlangImage is a cross-platform GPU image-processing library built on Slang and
+  slangpy — one kernel codebase running on Metal, CUDA, and Vulkan, fp16-first,
+  with differentiable ops for PyTorch (including a learnable color-grading LUT).
+type: software
+authors:
+  - family-names: Tatar
+    given-names: Tekin
+repository-code: "https://github.com/tekintatar/slangimage"
+url: "https://github.com/tekintatar/slangimage"
+license: Apache-2.0
+version: 0.1.0
+keywords:
+  - image-processing
+  - gpu
+  - slang
+  - slangpy
+  - cuda
+  - metal
+  - vulkan
+  - pytorch
+  - differentiable

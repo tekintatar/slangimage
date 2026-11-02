@@ -1,0 +1,264 @@
+{
+  "device": "NVIDIA L40S",
+  "platform": "Linux-6.17.0-14-generic-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "slangimage": "0.1.0.dev20260821",
+  "slangpy": "0.42.0",
+  "torch": "2.13.0+cu130",
+  "kornia": "0.8.3",
+  "torchvision": "0.28.0+cu130",
+  "timestamp": "2026-09-13T02:12:53+00:00",
+  "iters": 20,
+  "dtype": "fp32",
+  "cases": [
+    {
+      "size": 512,
+      "op": "gaussian 19x19",
+      "slangimage": {
+        "fwd_ms": 0.091,
+        "step_ms": 0.481,
+        "peak_mb": 9.0
+      },
+      "kornia": {
+        "fwd_ms": 0.81,
+        "step_ms": 1.09,
+        "peak_mb": 15.3
+      },
+      "torchvision": {
+        "fwd_ms": 0.229,
+        "step_ms": 0.447,
+        "peak_mb": 9.4
+      }
+    },
+    {
+      "size": 512,
+      "op": "bilateral 11x11",
+      "slangimage": {
+        "fwd_ms": 0.189,
+        "step_ms": 0.515,
+        "peak_mb": 11.0
+      },
+      "kornia": {
+        "fwd_ms": 8.089,
+        "step_ms": 21.607,
+        "peak_mb": 1946.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 512,
+      "op": "sepia",
+      "slangimage": {
+        "fwd_ms": 0.021,
+        "step_ms": 0.28,
+        "peak_mb": 6.0
+      },
+      "kornia": {
+        "fwd_ms": 0.095,
+        "step_ms": 0.486,
+        "peak_mb": 8.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 512,
+      "op": "hue rotate",
+      "slangimage": {
+        "fwd_ms": 0.02,
+        "step_ms": 0.287,
+        "peak_mb": 6.0
+      },
+      "kornia": {
+        "fwd_ms": 0.439,
+        "step_ms": 1.425,
+        "peak_mb": 64.3
+      },
+      "torchvision": null
+    },
+    {
+      "size": 512,
+      "op": "resize bil x0.5",
+      "slangimage": {
+        "fwd_ms": 0.1,
+        "step_ms": 0.451,
+        "peak_mb": 5.3
+      },
+      "kornia": {
+        "fwd_ms": 0.014,
+        "step_ms": 0.183,
+        "peak_mb": 3.8
+      },
+      "torchvision": {
+        "fwd_ms": 0.022,
+        "step_ms": 0.221,
+        "peak_mb": 3.8
+      }
+    },
+    {
+      "size": 1024,
+      "op": "gaussian 19x19",
+      "slangimage": {
+        "fwd_ms": 0.231,
+        "step_ms": 0.814,
+        "peak_mb": 36.0
+      },
+      "kornia": {
+        "fwd_ms": 0.913,
+        "step_ms": 1.177,
+        "peak_mb": 60.6
+      },
+      "torchvision": {
+        "fwd_ms": 0.557,
+        "step_ms": 1.201,
+        "peak_mb": 36.9
+      }
+    },
+    {
+      "size": 1024,
+      "op": "bilateral 11x11",
+      "slangimage": {
+        "fwd_ms": 0.298,
+        "step_ms": 0.912,
+        "peak_mb": 40.0
+      },
+      "kornia": {
+        "fwd_ms": 31.175,
+        "step_ms": 84.711,
+        "peak_mb": 7760.2
+      },
+      "torchvision": null
+    },
+    {
+      "size": 1024,
+      "op": "sepia",
+      "slangimage": {
+        "fwd_ms": 0.034,
+        "step_ms": 0.283,
+        "peak_mb": 24.0
+      },
+      "kornia": {
+        "fwd_ms": 0.098,
+        "step_ms": 0.487,
+        "peak_mb": 32.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 1024,
+      "op": "hue rotate",
+      "slangimage": {
+        "fwd_ms": 0.034,
+        "step_ms": 0.282,
+        "peak_mb": 24.0
+      },
+      "kornia": {
+        "fwd_ms": 0.644,
+        "step_ms": 1.611,
+        "peak_mb": 253.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 1024,
+      "op": "resize bil x0.5",
+      "slangimage": {
+        "fwd_ms": 0.097,
+        "step_ms": 0.448,
+        "peak_mb": 21.0
+      },
+      "kornia": {
+        "fwd_ms": 0.017,
+        "step_ms": 0.18,
+        "peak_mb": 15.0
+      },
+      "torchvision": {
+        "fwd_ms": 0.023,
+        "step_ms": 0.215,
+        "peak_mb": 15.0
+      }
+    },
+    {
+      "size": 2048,
+      "op": "gaussian 19x19",
+      "slangimage": {
+        "fwd_ms": 0.853,
+        "step_ms": 2.807,
+        "peak_mb": 144.0
+      },
+      "kornia": {
+        "fwd_ms": 1.633,
+        "step_ms": 2.599,
+        "peak_mb": 241.3
+      },
+      "torchvision": {
+        "fwd_ms": 1.993,
+        "step_ms": 4.569,
+        "peak_mb": 145.7
+      }
+    },
+    {
+      "size": 2048,
+      "op": "bilateral 11x11",
+      "slangimage": {
+        "fwd_ms": 1.063,
+        "step_ms": 3.722,
+        "peak_mb": 160.0
+      },
+      "kornia": {
+        "fwd_ms": 134.297,
+        "step_ms": 359.444,
+        "peak_mb": 31040.5
+      },
+      "torchvision": null
+    },
+    {
+      "size": 2048,
+      "op": "sepia",
+      "slangimage": {
+        "fwd_ms": 0.09,
+        "step_ms": 0.336,
+        "peak_mb": 96.0
+      },
+      "kornia": {
+        "fwd_ms": 0.405,
+        "step_ms": 1.2,
+        "peak_mb": 128.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 2048,
+      "op": "hue rotate",
+      "slangimage": {
+        "fwd_ms": 0.089,
+        "step_ms": 0.335,
+        "peak_mb": 96.0
+      },
+      "kornia": {
+        "fwd_ms": 3.61,
+        "step_ms": 10.372,
+        "peak_mb": 1012.0
+      },
+      "torchvision": null
+    },
+    {
+      "size": 2048,
+      "op": "resize bil x0.5",
+      "slangimage": {
+        "fwd_ms": 0.218,
+        "step_ms": 0.662,
+        "peak_mb": 84.0
+      },
+      "kornia": {
+        "fwd_ms": 0.028,
+        "step_ms": 0.221,
+        "peak_mb": 60.0
+      },
+      "torchvision": {
+        "fwd_ms": 0.033,
+        "step_ms": 0.249,
+        "peak_mb": 60.0
+      }
+    }
+  ]
+}
