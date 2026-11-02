@@ -183,15 +183,15 @@ class Lut(_ImageModule):
         super().__init__()
         if lut is None:
             lut = torch.tensor(identity_lut_np()[..., :3].copy())
-        lut = torch.as_tensor(np.asarray(lut) if not isinstance(lut, torch.Tensor) else lut,
-                              dtype=torch.float32)
-        if lut.ndim != 3 or lut.shape[2] != 3:
-            raise ValueError(f"expected an (N, N, 3) LUT, got {tuple(lut.shape)}")
-        validate_lut_size(lut.shape[1], lut.shape[0])
+        table = torch.as_tensor(np.asarray(lut) if not isinstance(lut, torch.Tensor) else lut,
+                                dtype=torch.float32)
+        if table.ndim != 3 or table.shape[2] != 3:
+            raise ValueError(f"expected an (N, N, 3) LUT, got {tuple(table.shape)}")
+        validate_lut_size(table.shape[1], table.shape[0])
         if learnable:
-            self.lut = _tnn.Parameter(lut)
+            self.lut = _tnn.Parameter(table)
         else:
-            self.register_buffer("lut", lut)
+            self.register_buffer("lut", table)
 
     def forward(self, image: torch.Tensor) -> torch.Tensor:
         return _diff.lut(image, self.lut)
