@@ -1,31 +1,158 @@
 # SlangImage
 
-Cross-platform GPU image processing library built on [Slang](https://shader-slang.org/)
-via [slangpy](https://github.com/shader-slang/slangpy) — one kernel codebase
-running on **Metal, CUDA, and Vulkan**, fp16-first, with **differentiable
-ops for PyTorch** (`slangimage.diff`): fused forward *and* backward kernels,
-including a learnable color-grading LUT.
+[![PyPI](https://img.shields.io/pypi/v/slangimage)](https://pypi.org/project/slangimage/)
+[![Python](https://img.shields.io/pypi/pyversions/slangimage)](https://pypi.org/project/slangimage/)
+[![checks](https://github.com/tekintatar/slangimage/actions/workflows/checks.yml/badge.svg)](https://github.com/tekintatar/slangimage/actions/workflows/checks.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/tekintatar/slangimage/blob/main/LICENSE)
 
-Use it to run the same image operators (blur and denoise, sharpening, color,
-geometry, stylization) from Python on macOS (Metal) or Linux (CUDA or Vulkan)
-GPUs, or to put fused, differentiable image ops inside a PyTorch training loop
-on CUDA. It is not a CPU library, and it processes one RGBA image at a time
-(there is no batch dimension yet).
+**Fast GPU image processing and PyTorch training augmentation, written as
+plain [Slang](https://shader-slang.org/) shaders.**
+
+SlangImage has two halves. A library of 44 image operators, each one fused
+GPU kernel, runs on Apple, NVIDIA and other Vulkan GPUs. `slangimage.augment`
+runs a torchvision-style training augmentation pipeline over a whole batch on
+an NVIDIA GPU in a few fused kernels. Both are small Slang functions called
+through [SlangPy](https://github.com/shader-slang/slangpy), so a new op is one
+more function, not a CUDA extension.
+
+- **Image processing on any GPU.** Blur and denoise (bilateral, non-local
+  means), sharpening, colour (CLAHE, white balance, LUTs, HSV), geometry,
+  compositing and stylization, in fp16 or fp32. The same code runs on Metal
+  (Apple Silicon), CUDA and Vulkan: prototype on a Mac, run on NVIDIA.
+  Edge-preserving filters gain most from fusing: the bilateral filter is
+  51–147× faster than kornia's.
+- **Training augmentation for PyTorch.** torchvision's transform names and
+  torchvision's results, image by image, but with a separate random crop,
+  flip and colour jitter for every image in the batch. An ImageNet
+  augmentation batch of 256 takes 1.3 ms on an H100, against 7.3 ms for
+  torchvision's batched transforms (one setting for the whole batch) and
+  17 ms for Kornia. Paired with DALI's GPU decoding, training runs within
+  about 3% of DALI's own augmentation, with torchvision's results instead of
+  DALI's approximations.
+- **Your own ops in a few lines.** A custom augmentation is a Python class
+  with one Slang function, fused into the same kernels as the built-in
+  transforms. A custom image operator is one `.slang` file.
+- **Differentiable, too.** Nine of the operators also have fused backward
+  kernels for `torch.autograd` (`slangimage.diff`): the same shader code
+  serves training as well as processing.
 
 **Status: pre-alpha, under active development.** APIs may still change.
 
-## Why SlangImage
+## Quick start
 
-Edge-preserving and data-dependent filters — bilateral, CLAHE, non-local
-means, hue/HSV math — run here as one fused GPU kernel per operation. Tensor
-libraries assemble them from generic steps (unfold/im2col windows, per-pixel
-color-space conversions) that materialize many copies of the image, so the gap
-is largest where the math is most complex, and it carries over to training
-memory.
+### Image processing (Metal, CUDA or Vulkan)
 
-Measured on two NVIDIA GPU generations (L40S and RTX PRO 4500 Blackwell),
-batch 1, 1024² and 2048²; forward rows cover fp16 and fp32, training-step rows
-fp32. Ranges span both GPUs:
+```bash
+pip install slangimage
+python -m slangimage      # which GPU backends work here, and why not
+```
+
+```python
+import slangimage as si
+
+img = si.load("photo.jpg")                            # fp16 on the GPU
+out = si.ops.surface_blur(img, radius=9, bsigma=0.05)
+out = si.ops.vibrance(out, amount=0.6)
+out = si.ops.clahe(out, clip_limit=2.5)
+out.save("out.png")
+
+# chaining style
+out = (
+    si.load("photo.jpg")
+    .pipe(si.ops.kuwahara, radius=6)
+    .pipe(si.ops.sharpen_luma, sharpness=0.8)
+)
+
+# numpy in / numpy out (lossless, unclipped)
+import numpy as np
+arr = si.from_numpy(np.random.rand(512, 512, 3).astype(np.float16))
+x = si.ops.normalize(arr, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)).to_numpy()
+```
+
+The device is chosen automatically (Metal on macOS, CUDA elsewhere, Vulkan
+as the fallback). Kernels compile lazily per device and precision, so the
+first call of each operator is slower; services call `si.prewarm()` once at
+startup. `img.to_torch()` and `si.from_torch()` convert to and from torch
+tensors on any backend. More runnable scripts are in
+[examples/](https://github.com/tekintatar/slangimage/tree/main/examples)
+(source checkout; e.g. `python examples/01_quickstart.py`).
+
+### Training augmentation (PyTorch, NVIDIA GPU)
+
+```bash
+pip install slangimage torch
+```
+
+```python
+import torch
+import slangimage.augment as A
+
+train = A.Compose([
+    A.RandomResizedCrop(224),
+    A.RandomHorizontalFlip(),
+    A.ColorJitter(0.4, 0.4, 0.4, 0.1),
+    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+])
+images = torch.randint(0, 256, (64, 3, 480, 640), dtype=torch.uint8, device="cuda")
+x = train(images)   # (64, 3, 224, 224) float16; a list of decoded images also works
+```
+
+- **Per-image randomness.** Every image gets its own crop, flip, jitter
+  factors and jitter order; `same_on_batch=True` on a transform shares them.
+  Seeded from `torch.manual_seed`, with no host sync.
+- **torchvision's results.** Each transform matches torchvision's float
+  functional image by image (about 1e-5 in float32), so switching does not
+  change what your model sees.
+- **Reads any decoder's output in place**: a uint8 batch, or a list of
+  differently sized images from `torchvision.io`, nvImageCodec, DALI or
+  DataLoader workers (`layout="hwc"` for `(H, W, 3)`).
+- **In real training** (ImageNet subset, ResNet-18 on one H100): moving
+  augmentation from 16 CPU workers to the GPU raised throughput 1.4×; with
+  DALI's GPU decoder it runs within about 3% of DALI's own augmentation while
+  giving torchvision's results.
+- **No compiled extension.** It needs PyTorch with CUDA and NVRTC (see
+  [CUDA on Linux](https://github.com/tekintatar/slangimage#cuda-on-linux-install-nvrtc)),
+  not the `slangpy-torch` bridge.
+
+Transforms: `RandomResizedCrop`, `Resize`, `CenterCrop`,
+`RandomHorizontalFlip`, `ColorJitter`, `RandomGrayscale`, `GaussianBlur`,
+`RandomSolarize`, `RandomApply` and `Normalize`. Adding your own takes one
+Slang function:
+
+```python
+import slangimage.augment as A
+
+class RandomGamma(A.ColorOp):
+    """Gamma correction with a random exponent per image."""
+    params = {"gamma": A.Uniform(0.8, 1.25)}
+    slang = "float4 apply(float4 c, float gamma) { return clamp01(pow(c, float4(gamma))); }"
+
+train = A.Compose([A.RandomResizedCrop(224), A.RandomHorizontalFlip(), RandomGamma(p=0.5)])
+```
+
+Ops that read neighbouring pixels (blurs, filters) subclass
+`A.NeighbourhoodOp` the same way. The
+[augmentation guide](https://github.com/tekintatar/slangimage/blob/main/docs/AUGMENT.md)
+covers the transforms, pipeline rules, decoder recipes (torchvision,
+nvImageCodec, DALI, DataLoader), custom ops, accuracy and limits.
+
+## Performance
+
+Training augmentation, batch 256, 512×384 uint8 in, 224×224 fp16 out, one
+NVIDIA H100 NVL, ms per batch:
+
+| Recipe | SlangImage | torchvision, batched | torchvision, per image | Kornia, per image |
+|---|---:|---:|---:|---:|
+| ImageNet: crop, flip, ColorJitter, Normalize | **1.31** | 7.32 | 389 | 16.6 |
+| Evaluation: Resize, CenterCrop | **0.68** | 2.90 | 51.9 | — |
+| SimCLR: + grayscale, blur, solarize | **2.30** | 7.6–12.6 | 390 | 22.3 |
+
+torchvision's batched mode does less work (one random setting for all 256
+images); its per-image loop is the like-for-like comparison.
+
+Image operators, batch 1 at 1024² and 2048², on an NVIDIA L40S and an RTX
+PRO 4500 Blackwell (ranges span both GPUs, fp16 and fp32 forward; training
+steps in fp32):
 
 | Operation | vs kornia | vs torchvision |
 |---|---|---|
@@ -35,17 +162,123 @@ fp32. Ranges span both GPUs:
 | Hue rotation, forward | 7–15× faster | 5–28× faster |
 | Gaussian blur 19×19, forward | 3–7× faster | 3–9× faster |
 
+Tensor libraries build edge-preserving and data-dependent filters from
+generic steps (unfold windows, per-pixel colour-space conversions) that
+materialize many copies of the image; here each is one kernel, so the gap is
+largest where the math is most complex.
+
 Where it is not faster: tiny per-pixel operations (invert, gamma, grayscale,
-autocontrast) cost about 0.05–0.7 ms per call here, mostly dispatch overhead,
-and torchvision's native kernels are about 1.6–5.6× faster at that scale; in
-training, PyTorch's own bilinear resize is about 2–3× faster per step. Results
-depend on library versions: kornia 0.9.0's CLAHE is up to about 6× faster than
-0.8.3's (at 1024², fp16, measured on different GPUs), which accounts for most
-of the CLAHE range above. Every cell, including the ones SlangImage loses, and
-the raw data are linked under
+autocontrast) cost about 0.05–0.7 ms per call here, mostly dispatch
+overhead, and torchvision's native kernels are about 1.6–5.6× faster at that
+scale; in training, PyTorch's own bilinear resize is about 2–3× faster per
+step. kornia 0.9.0's CLAHE is up to about 6× faster than 0.8.3's, which
+accounts for most of the CLAHE range above. Every cell, including the ones
+SlangImage loses, and the raw data are linked under
 [Benchmarks](https://github.com/tekintatar/slangimage#benchmarks).
 
-## Installation
+## Differentiable ops (PyTorch, CUDA)
+
+`slangimage.diff` runs nine of the operators inside `torch.autograd` with
+fused forward and backward Slang kernels: `gaussian_blur`, `bilateral`,
+`unsharp_mask`, `resize`, `exposure`, `sepia`, `hue_rotate`, `blend` and
+`lut` (differentiable in both the image and the LUT). `slangimage.nn` wraps
+them as `torch.nn.Module`s, including a learnable colour-grading LUT:
+
+```python
+import torch
+import slangimage.diff as sid
+import slangimage.nn as snn
+
+img = torch.rand(512, 512, 3, device="cuda", requires_grad=True)   # one (H, W, 3) image
+out = sid.bilateral(img, radius=5, sigma_range=0.15)   # edge-preserving; gradients reach img
+out = sid.sepia(out, intensity=0.8)
+out.mean().backward()                                  # fused backward kernels
+
+grade = torch.nn.Sequential(snn.Bilateral(radius=5), snn.Lut()).cuda()
+out = grade(img)                                       # the LUT is an nn.Parameter
+```
+
+They take one float32 `(H, W, 3)` CUDA tensor per call (fp16, bfloat16 and
+`torch.autocast` inputs are computed in fp32, with gradients returned in the
+input dtype) and need the compiled bridge from the
+[`torch` extra](https://github.com/tekintatar/slangimage#pytorch-extra-slangimagetorch);
+`sid.available()` returns `False` instead of raising when it is missing.
+[examples/06_differentiable_torch.py](https://github.com/tekintatar/slangimage/blob/main/examples/06_differentiable_torch.py)
+learns a colour grade as a LUT from an (original, edited) pair; the trained
+LUT then works as a preset in `si.ops.lut` on any backend. Gradients are
+tested against sampled fp32 finite differences with an explicit error
+budget, and `resize` matches `F.interpolate(align_corners=False,
+antialias=False)` to within 1e-4, forward and backward (see the
+[per-op evidence](https://github.com/tekintatar/slangimage/blob/main/docs/TEST_COVERAGE.md#cuda-tensor-operators-sidiff-and-modules-sinn)).
+
+## Operators
+
+The texture operators (`si.ops`) support all three backends with fp16 or
+fp32 storage and process one image per call; batched training data goes
+through `slangimage.augment`. Test depth varies by operator and precision;
+see the
+[operator test-evidence map](https://github.com/tekintatar/slangimage/blob/main/docs/TEST_COVERAGE.md)
+for references and gaps.
+
+| Category | Operators |
+|---|---|
+| Blur & denoise | `gaussian_blur`, `surface_blur`, `bilateral` (full/separable, gaussian or cutoff range), `nl_means` |
+| Sharpening | `unsharp_mask`, `ep_unsharp_mask`, `sharpen_luma` |
+| Color | `vibrance`, `gamma`, `color_controls`, `exposure`, `sepia`, `hue_rotate`, `white_balance` (Kelvin + tint, Bradford), `false_color`, `highlight_shadow`, `clahe`, `equalize`, `autocontrast`, `solarize`, `posterize`, `grayscale`, `normalize`, `srgb_to_linear`, `linear_to_srgb`, `lut` (square 8×8-grid CLUT), `invert`, `extract_channel` |
+| Compositing | `blend` (12 Photoshop/PDF modes), `clamp_multiply`, `high_pass_contrast` |
+| Stylization | `kuwahara`, `pointillize`, `cmyk_halftone`, `smooth_threshold`, `smooth_threshold_bw` |
+| Geometry | `resize` (Lanczos3 / bicubic), `flip`, `rot90`, `crop`, `tile` (scale/phase, periodic bilinear/nearest), `rotate` (with `expand`), `affine` (bilinear/nearest, zeros fill) |
+| Generators | `random_noise` |
+
+There is no generated API reference yet: every operator's docstring gives its
+parameters, defaults and clipping behavior (`help(si.ops.clahe)`), and invalid
+controls raise `ValueError` before dispatch (see the
+[parameter contracts](https://github.com/tekintatar/slangimage/blob/main/docs/PARAMETER_CONTRACTS.md)).
+
+Downstream packages can ship their own `.slang` kernels with
+`ModuleCache.add_ops_dir()` and call them like the built-ins
+([examples/05_custom_kernels.py](https://github.com/tekintatar/slangimage/blob/main/examples/05_custom_kernels.py)).
+Higher-level effect pipelines (multi-op graphs with pooled intermediates)
+live under `slangimage.fx` (`GaussianBlurEffect`, `SoftGlowEffect`,
+`KuwaharaPaintEffect`), and operator implementation classes under
+`slangimage.kernels`. Effects are constructed once for a device and reuse its
+module cache and texture pool. Their parameters are explicit and validated;
+Gaussian effects accept either `blur_amount` or the complete `radius`/`sigma`
+pair:
+
+```python
+import slangimage as si
+
+img = si.load("photo.jpg")
+modules = si.ModuleCache(img.device)
+glow = si.fx.SoftGlowEffect(img.device, modules)
+out = glow.apply(img, radius=9, sigma=3.0, glow_strength=0.7)
+```
+
+### Backend support
+
+| Capability | Metal | CUDA | Vulkan |
+|---|:---:|:---:|:---:|
+| All functional ops (`si.ops`) | ✓ | ✓ | ✓ |
+| fp16 & fp32 storage | ✓ | ✓ | ✓ |
+| Training augmentation (`slangimage.augment`) | — | ✓ | — |
+| Differentiable ops (`si.diff`, `si.nn`) | — | ✓ | — |
+| Auto-selected on | macOS | Linux | fallback |
+
+The texture operators were validated on macOS 26 with an Apple M3 Max (Metal)
+and on Ubuntu 24.04 with an NVIDIA L40S and an NVIDIA RTX PRO 4500 Blackwell
+(CUDA and Vulkan), `slangimage.augment` on Ubuntu 24.04 with an NVIDIA H100
+NVL. Windows, other GPUs and other Linux distributions have not been tested;
+see the
+[platform notes](https://github.com/tekintatar/slangimage/blob/main/docs/PLATFORM_NOTES.md).
+
+Augmentation and differentiable ops require PyTorch and are CUDA-only (torch
+interop). The normal Metal/Vulkan suites exclude the CUDA-only tests; they do
+not validate augmentation or gradients. (The standalone Slang autodiff
+experiments under `experiments/` also ran on Metal, but they are not a
+supported Metal PyTorch path.)
+
+## Installation details
 
 Requires Python 3.10–3.13 and a Metal, CUDA, or Vulkan GPU — there is no CPU
 fallback. Create the virtual environment with a supported interpreter named
@@ -67,7 +300,9 @@ backend); otherwise `import slangimage` fails with
 `slangimage[torch]` (differentiable ops — CUDA only, see
 [PyTorch extra](https://github.com/tekintatar/slangimage#pytorch-extra-slangimagetorch) below), `slangimage[bench]`
 (adds NVIDIA VRAM sampling to the benchmark suite; not needed on Metal) and
-`slangimage[playground]` (the Gradio UI).
+`slangimage[playground]` (the Gradio UI). Training augmentation needs no
+extra: install `torch` next to `slangimage`, plus NVRTC as for the CUDA
+backend (below).
 
 **Platform requirements** come from the [SlangPy](https://pypi.org/project/slangpy/)
 wheels SlangImage depends on:
@@ -80,7 +315,7 @@ wheels SlangImage depends on:
 - **Windows:** SlangPy publishes Windows wheels, but SlangImage has not been
   tested on Windows.
 
-See the [backend support matrix](https://github.com/tekintatar/slangimage#backend-support) below and the
+See the [backend support matrix](https://github.com/tekintatar/slangimage#backend-support) above and the
 [platform notes](https://github.com/tekintatar/slangimage/blob/main/docs/PLATFORM_NOTES.md)
 for tested platforms and troubleshooting.
 
@@ -123,9 +358,10 @@ host (the NVIDIA driver's Vulkan ICD plus the `libvulkan1` loader).
 
 ### PyTorch extra (`slangimage[torch]`)
 
-The CUDA differentiable extra intentionally pins PyTorch 2.13 and SlangPy 0.42.
-SlangPy 0.43.0/0.43.1 bundles a compiler regression that can hang generated
-backward for runtime-dependent tensor loads
+The extra is for the differentiable ops (`slangimage.diff`, `slangimage.nn`);
+training augmentation does not need it. It intentionally pins PyTorch 2.13
+and SlangPy 0.42. SlangPy 0.43.0/0.43.1 bundles a compiler regression that can
+hang generated backward for runtime-dependent tensor loads
 ([slangpy#1167](https://github.com/shader-slang/slangpy/issues/1167)); in
 SlangImage this affects differentiable `gaussian_blur`, `unsharp_mask`, and
 graphs containing them. Do not override the SlangPy pin when using
@@ -157,86 +393,7 @@ repeating step 2 with `--force-reinstall --no-deps`. For an install without
 sudo (CUDA headers from pip wheels) and troubleshooting, see
 [docs/INSTALL_TORCH.md](https://github.com/tekintatar/slangimage/blob/main/docs/INSTALL_TORCH.md).
 
-## Quick start
-
-```python
-import slangimage as si
-
-img = si.load("photo.jpg")                            # fp16 on the GPU
-out = si.ops.surface_blur(img, radius=9, bsigma=0.05)
-out = si.ops.vibrance(out, amount=0.6)
-out = si.ops.clahe(out, clip_limit=2.5)
-out.save("out.png")
-
-# chaining style
-out = (
-    si.load("photo.jpg")
-    .pipe(si.ops.kuwahara, radius=6)
-    .pipe(si.ops.sharpen_luma, sharpness=0.8)
-)
-
-# numpy in / numpy out (lossless, unclipped)
-import numpy as np
-arr = si.from_numpy(np.random.rand(512, 512, 3).astype(np.float16))
-x = si.ops.normalize(arr, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)).to_numpy()
-```
-
-Kernels compile lazily per device and precision, so the first call of each
-operator is slower; long-running services call `si.prewarm()` once at startup
-for each precision they serve. More runnable scripts live in
-[examples/](https://github.com/tekintatar/slangimage/tree/main/examples)
-(source checkout; run e.g. `python examples/01_quickstart.py`): 01–05 run on
-any backend (add `--backend vulkan`, `cuda` or `metal` to override automatic
-selection), 06 needs CUDA and the `torch` extra. Rendered images go to
-`examples/out/`; without your own images in `test_images/` (or
-`SLANGIMAGE_TEST_IMAGES`), a synthetic input is generated there on first run.
-
-### Quick start: PyTorch (CUDA)
-
-`img.to_torch()` and `si.from_torch()` copy images to and from torch tensors
-on any backend (they need only `torch`). The differentiable ops in
-`slangimage.diff` / `slangimage.nn` need the [`torch` extra](https://github.com/tekintatar/slangimage#pytorch-extra-slangimagetorch)
-and an NVIDIA GPU, and take one image at a time as a float32 `(H, W, 3)` CUDA
-tensor:
-
-```python
-import torch
-import slangimage as si
-import slangimage.diff as sid
-import slangimage.nn as snn
-
-photo = si.load("photo.jpg").to_torch(device="cuda").float()    # (H, W, 3) float32
-
-# gradients flow through fused forward and backward kernels
-x = photo.clone().requires_grad_()
-out = sid.sepia(sid.bilateral(x, radius=5, sigma_range=0.15), intensity=0.8)
-out.mean().backward()                                            # x.grad is set
-
-# learn a color grade as a LUT from an (original, edited) pair of the same size
-edited = si.load("photo_edited.jpg").to_torch(device="cuda").float()
-grade = snn.Lut().cuda()                                         # identity LUT, learnable
-opt = torch.optim.Adam(grade.parameters(), lr=5e-2)
-for step in range(100):
-    loss = (grade(photo) - edited).pow(2).mean()
-    opt.zero_grad()
-    loss.backward()
-    opt.step()
-si.from_torch(grade(photo).detach().clamp(0, 1)).save("graded.png")
-
-# the trained LUT is a preset for the texture path (any backend, no torch needed)
-lut_image = si.from_torch(grade.lut.detach())
-si.ops.lut(si.load("another.jpg"), lut_image).save("another_graded.png")
-
-# torch models use NCHW batches; slangimage takes one HWC image per call
-nchw = photo.permute(2, 0, 1).unsqueeze(0)                       # (1, 3, H, W)
-hwc = nchw[0].permute(1, 2, 0)                                   # back to (H, W, 3)
-```
-
-`to_torch(layout="chw")` returns `(C, H, W)` directly, and `alpha=True` keeps
-the alpha channel. Both conversions are lossless copies through host memory,
-not zero-copy views.
-
-### Choosing a backend
+## Choosing a backend
 
 The device is chosen automatically — Metal on macOS, CUDA elsewhere, with
 Vulkan as the fallback if the preferred backend cannot start — and operators
@@ -259,143 +416,8 @@ not available on the tested macOS machine; use Metal there). `si.device()`
 returns a process-wide default owned by the thread that first creates it; see
 [Conventions](https://github.com/tekintatar/slangimage#conventions) for multithreaded use. The `SLANGIMAGE_BACKEND`
 environment variable only selects the backend for the test suite; the library
-itself does not read it.
-
-## Operators
-
-The texture operators support all three backends with fp16 or fp32 storage.
-Test depth varies by operator and precision; see the
-[operator test-evidence map](https://github.com/tekintatar/slangimage/blob/main/docs/TEST_COVERAGE.md)
-for references and gaps.
-
-| Category | Operators |
-|---|---|
-| Blur & denoise | `gaussian_blur`, `surface_blur`, `bilateral` (full/separable, gaussian or cutoff range), `nl_means` |
-| Sharpening | `unsharp_mask`, `ep_unsharp_mask`, `sharpen_luma` |
-| Color | `vibrance`, `gamma`, `color_controls`, `exposure`, `sepia`, `hue_rotate`, `white_balance` (Kelvin + tint, Bradford), `false_color`, `highlight_shadow`, `clahe`, `equalize`, `autocontrast`, `solarize`, `posterize`, `grayscale`, `normalize`, `srgb_to_linear`, `linear_to_srgb`, `lut` (square 8×8-grid CLUT), `invert`, `extract_channel` |
-| Compositing | `blend` (12 Photoshop/PDF modes), `clamp_multiply`, `high_pass_contrast` |
-| Stylization | `kuwahara`, `pointillize`, `cmyk_halftone`, `smooth_threshold`, `smooth_threshold_bw` |
-| Geometry | `resize` (Lanczos3 / bicubic), `flip`, `rot90`, `crop`, `tile` (scale/phase, periodic bilinear/nearest), `rotate` (with `expand`), `affine` (bilinear/nearest, zeros fill) |
-| Generators | `random_noise` |
-
-There is no generated API reference yet: every operator's docstring gives its
-parameters, defaults and clipping behavior (`help(si.ops.clahe)`), and invalid
-controls raise `ValueError` before dispatch (see the
-[parameter contracts](https://github.com/tekintatar/slangimage/blob/main/docs/PARAMETER_CONTRACTS.md)).
-
-### Backend support
-
-| Capability | Metal | CUDA | Vulkan |
-|---|:---:|:---:|:---:|
-| All functional ops (`si.ops`) | ✓ | ✓ | ✓ |
-| fp16 & fp32 storage | ✓ | ✓ | ✓ |
-| Differentiable ops (`si.diff`, `si.nn`) | — | ✓ | — |
-| Auto-selected on | macOS | Linux | fallback |
-
-Validated on macOS 26 with an Apple M3 Max (Metal) and on Ubuntu 24.04 with an
-NVIDIA L40S and an NVIDIA RTX PRO 4500 Blackwell (CUDA and Vulkan). Windows,
-other GPUs and other Linux distributions have not been tested; see the
-[platform notes](https://github.com/tekintatar/slangimage/blob/main/docs/PLATFORM_NOTES.md).
-
-Differentiable ops require PyTorch and are CUDA-only (torch interop).
-The normal Metal/Vulkan suites exclude CUDA autograd tests; they do not validate
-gradients. (The standalone Slang autodiff experiments under `experiments/` also
-ran on Metal, but they are not a supported Metal PyTorch path.)
-
-Higher-level effect pipelines (multi-op graphs with pooled intermediates)
-live under `slangimage.fx` (`GaussianBlurEffect`, `SoftGlowEffect`,
-`KuwaharaPaintEffect`); operator implementation classes under
-`slangimage.kernels` for advanced use. Downstream packages can ship their own
-`.slang` kernels via `ModuleCache.add_ops_dir()` (see
-`examples/05_custom_kernels.py`).
-
-Effects are constructed once for a device and reuse its module cache and
-texture pool. Their parameters are explicit and validated; Gaussian effects
-accept either `blur_amount` or the complete `radius`/`sigma` pair:
-
-```python
-import slangimage as si
-
-img = si.load("photo.jpg")
-modules = si.ModuleCache(img.device)
-glow = si.fx.SoftGlowEffect(img.device, modules)
-out = glow.apply(img, radius=9, sigma=3.0, glow_strength=0.7)
-```
-
-## Differentiable ops (PyTorch)
-
-`slangimage.diff` runs fused Slang kernels inside `torch.autograd`
-(CUDA): gradients flow through the ops, so they can sit between a network
-and its loss — or *be* the model:
-
-```python
-import torch
-import slangimage.diff as sid
-
-img = torch.rand(512, 512, 3, device="cuda", requires_grad=True)
-out = sid.bilateral(img, radius=5, sigma_range=0.15)   # edge-preserving; gradients reach img
-out = sid.sepia(out, intensity=0.8)
-out.mean().backward()                                  # fused backward kernels
-```
-
-The [PyTorch quick start](https://github.com/tekintatar/slangimage#quick-start-pytorch-cuda) shows a complete
-training loop that learns a color grade as a LUT.
-
-Available: `gaussian_blur`, `bilateral` (hand-written gather backward —
-46–97× faster per training step than kornia at 1–4 MP across the L40S and
-RTX PRO 4500 comparison runs — 93–97× in the L40S reference run — with a
-158–194× lower Torch-allocator peak),
-`unsharp_mask`, `resize` (bilinear/bicubic; forward and backward match
-`F.interpolate(align_corners=False, antialias=False)` to within 1e-4 in the
-tests), `exposure`, `sepia`, `hue_rotate`, `blend`, `lut` (differentiable
-w.r.t. both image and LUT). Gradient tests use sampled fp32 central finite
-differences with an explicit error budget, or an analytic derivative for
-exposure, alongside NumPy/torch references and invariants. See the
-[per-op evidence](https://github.com/tekintatar/slangimage/blob/main/docs/TEST_COVERAGE.md#cuda-tensor-operators-sidiff-and-modules-sinn).
-fp16, bfloat16 and `torch.autocast` inputs are handled
-(upcast to fp32 compute, gradients flow back in the input dtype). See
-`benchmarks/compare_kornia_diff.py` for the training-step numbers.
-`sid.available()` returns `False` (instead of raising) when torch, a CUDA
-device or the SlangPy torch bridge is missing.
-
-`slangimage.nn` wraps these as `torch.nn.Module`s (kornia-style) — and
-`snn.Lut()` is trainable color grading as a drop-in module:
-
-```python
-import torch
-import slangimage.nn as snn
-
-img = torch.rand(512, 512, 3, device="cuda")
-grade = torch.nn.Sequential(snn.Bilateral(radius=5), snn.Lut()).cuda()
-out = grade(img)                             # the LUT is an nn.Parameter
-```
-
-## GPU augmentation (PyTorch training)
-
-`slangimage.augment` runs training augmentation on CUDA. Pipelines use
-torchvision's transform names, draw separate random values for every image,
-and compile into a few fused Slang kernels:
-
-```python
-import torch
-import slangimage.augment as A
-
-train = A.Compose([
-    A.RandomResizedCrop(224),
-    A.RandomHorizontalFlip(),
-    A.ColorJitter(0.4, 0.4, 0.4, 0.1),
-    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-])
-images = torch.randint(0, 256, (64, 3, 480, 640), dtype=torch.uint8, device="cuda")
-x = train(images)   # (64, 3, 224, 224) float16; a list of decoded images also works
-```
-
-Results match torchvision's float functionals image by image. Inputs are
-read in place from any decoder (torchvision, nvImageCodec, DALI, DataLoader
-workers), and you can add your own ops in a few lines of Slang. It needs
-PyTorch with CUDA, but not the compiled `slangpy-torch` bridge. See
-[docs/AUGMENT.md](https://github.com/tekintatar/slangimage/blob/main/docs/AUGMENT.md)
-for the transforms, decoder recipes, custom ops and measured performance.
+itself does not read it. `slangimage.augment` always runs on PyTorch's current
+CUDA device and stream.
 
 ## Precision
 
@@ -476,6 +498,9 @@ honestly) live in `benchmarks/compare_augmentation.py` and
 `benchmarks/compare_kornia_diff.py`, with reference numbers in each header and
 raw results for the L40S, RTX PRO 4500 Blackwell and Apple M3 Max in
 [benchmarks/comparisons/](https://github.com/tekintatar/slangimage/tree/main/benchmarks/comparisons).
+`benchmarks/compare_augment_pipelines.py` times `slangimage.augment` against
+torchvision and Kornia pipelines; the training-throughput runs are described in
+the [augmentation guide](https://github.com/tekintatar/slangimage/blob/main/docs/AUGMENT.md#performance).
 
 ## Development
 
@@ -492,14 +517,15 @@ pytest
 The test suite runs on any of the three backends:
 `SLANGIMAGE_BACKEND=vulkan pytest -ra`. This selects the shared texture fixture;
 no-plumbing API/lifecycle tests also exercise automatic device selection.
-The differentiable tests run only with `auto`/`cuda` selection and available
-`torch` + CUDA; explicit Metal/Vulkan runs exclude all three CUDA-only files.
-The summary separates selected-backend texture + host checks, intentional
-AUTO-device API/lifecycle checks, and CUDA autograd results. Use
-`-m 'not auto_device'` to exclude intentional AUTO checks. Prewarm tests execute
-every public texture operator on the selected device at both fp16/fp32; these
-are dispatch/storage checks, not numerical references. Three skipped
-collection nodes (the three CUDA-only files) mean gradients were not tested. See
+The differentiable and augmentation tests run only with `auto`/`cuda`
+selection and available `torch` + CUDA; explicit Metal/Vulkan runs exclude
+the CUDA-only files. The summary separates selected-backend texture + host
+checks, intentional AUTO-device API/lifecycle checks, CUDA autograd results
+and CUDA augment results. Use `-m 'not auto_device'` to exclude intentional
+AUTO checks. Prewarm tests execute every public texture operator on the
+selected device at both fp16/fp32; these are dispatch/storage checks, not
+numerical references. Skipped collection nodes for the CUDA-only files mean
+gradients and augmentation were not tested. See
 [test reporting](https://github.com/tekintatar/slangimage/blob/main/docs/TEST_COVERAGE.md#reporting-backend-coverage-accurately)
 and [CONTRIBUTING.md](https://github.com/tekintatar/slangimage/blob/main/CONTRIBUTING.md).
 
