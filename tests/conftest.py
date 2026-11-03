@@ -20,6 +20,7 @@ CUDA_AUTOGRAD_TEST_FILES = {
     "test_diff_core_contracts.py",
     "test_nn.py",
 }
+CUDA_AUGMENT_TEST_FILES = {"test_augment.py"}
 
 
 def pytest_collection_modifyitems(config, items):
@@ -27,7 +28,7 @@ def pytest_collection_modifyitems(config, items):
     GPU-free remainder (lint-level CI, machines without a supported GPU)."""
     for item in items:
         if ("ctx" in item.fixturenames or item.get_closest_marker("auto_device")
-                or item.path.name in CUDA_AUTOGRAD_TEST_FILES):
+                or item.path.name in CUDA_AUTOGRAD_TEST_FILES | CUDA_AUGMENT_TEST_FILES):
             item.add_marker(pytest.mark.gpu)
 
 
@@ -54,12 +55,15 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         "Selected-backend texture + host tests": Counter(),
         "AUTO-device API/lifecycle tests": Counter(),
         "CUDA autograd tests": Counter(),
+        "CUDA augment tests": Counter(),
     }
     for outcome in ("passed", "failed", "error", "skipped", "xfailed", "xpassed"):
         for report in terminalreporter.stats.get(outcome, ()):
             path = report.nodeid.split("::", 1)[0].replace("\\", "/")
             if path.rsplit("/", 1)[-1] in CUDA_AUTOGRAD_TEST_FILES:
                 group = "CUDA autograd tests"
+            elif path.rsplit("/", 1)[-1] in CUDA_AUGMENT_TEST_FILES:
+                group = "CUDA augment tests"
             elif "auto_device" in getattr(report, "keywords", {}):
                 group = "AUTO-device API/lifecycle tests"
             else:
@@ -78,5 +82,5 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         terminalreporter.write_line(f"{group}: {summary or 'no test results'}")
     terminalreporter.write_line(
         "Selected-backend texture + host includes CPU checks; AUTO-device tests are separate. "
-        "CUDA autograd skips are not gradient coverage. See docs/TEST_COVERAGE.md."
+        "CUDA autograd and augment skips are not coverage. See docs/TEST_COVERAGE.md."
     )

@@ -27,6 +27,23 @@ autograd, packaging/support-matrix and performance validation work recorded in
    gap in training pipelines — plus features tensor libraries can't match
    cheaply (learnable LUTs).
 
+## Track A — training augmentation (`slangimage.augment`)
+
+- **A1 — phase 1** ✅ implemented 2026-11-03: torchvision-style pipelines
+  compiled into fused Slang kernels, random values per image
+  (`same_on_batch` optional), in-place reads of batches or lists of decoded
+  images (CHW/HWC), public `ColorOp`/`NeighbourhoodOp` for custom ops.
+  Transforms: RandomResizedCrop, Resize, CenterCrop, RandomHorizontalFlip,
+  ColorJitter, RandomApply, RandomGrayscale, GaussianBlur, RandomSolarize,
+  Normalize. CUDA only. User guide and measurements: [AUGMENT.md](AUGMENT.md).
+- **A2 — policies**, if phase 1 is used: complete RandAugment and
+  TrivialAugmentWide (their geometric ops through a per-image 3x3 matrix and
+  one resample, which also brings RandomAffine/RandomRotation/
+  RandomPerspective) and the ops they need (sharpness, posterize, invert,
+  autocontrast, equalize), RandomChoice.
+- **A3 — targets**, only if users ask: masks, boxes and keypoints with the
+  same per-image values; MixUp/CutMix.
+
 ## Track D — differentiable ops ✅ COMPLETE (D0→D1→D2, 2026-07-12)
 
 - ~~**D0 — spike.**~~ ✅ done 2026-07-12 (experiments/d0_diff_gaussian/FINDINGS.md): One op (gaussian: backward = same

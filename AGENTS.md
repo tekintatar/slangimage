@@ -43,6 +43,12 @@ notes (interpreter paths, GPU hosts, identities) in your own untracked
   modules (ModuleCache), textures (upload/readback), texture_pool.
 - `src/slangimage/image.py` — `si.Image` handle; `fx/` — effect framework;
   `bench/` — benchmark suite.
+- `src/slangimage/augment/` — training augmentation on torch CUDA tensors
+  (docs/AUGMENT.md): `Compose` (`_compile.py`) generates one Slang entry
+  point per pass from the transforms' snippets and appends it to
+  `shaders/augment/augment.slang`; `_runtime.py` owns the device, the
+  input-address table and the module cache. Separate from the texture ops:
+  torchvision semantics, not the photo-editing ones.
 
 Adding an op = shaders/ops/x.slang + kernels/x.py + functional wrapper in
 ops.py + a case in the `prewarm()` registry + property tests (numpy
@@ -106,6 +112,14 @@ generically named.
   (docs/UPSTREAM_ISSUES.md).
 - Displayed images in gradio default to lossy webp → grid artifacts on
   smooth gradients; playground pins format="png".
+- `slangimage.augment`: every transform must match torchvision's float
+  functional image by image; its `_reference` replays the sampled per-image
+  values, and `tests/test_augment.py` (CUDA) checks each one through
+  `Compose.max_reference_error`. Inputs are read in place through device
+  addresses (`uint8_t*` cast from int64), so the caller keeps them alive
+  until the GPU has run. Pipeline and argument checks that need no GPU go in
+  `tests/test_augment_api.py`. Inspect generated code with `Compose.source`.
+  Built-in colour ops use the public `ColorOp` API where they can.
 
 ## Where things are documented
 

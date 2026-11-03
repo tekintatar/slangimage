@@ -370,6 +370,33 @@ grade = torch.nn.Sequential(snn.Bilateral(radius=5), snn.Lut()).cuda()
 out = grade(img)                             # the LUT is an nn.Parameter
 ```
 
+## GPU augmentation (PyTorch training)
+
+`slangimage.augment` runs training augmentation on CUDA. Pipelines use
+torchvision's transform names, draw separate random values for every image,
+and compile into a few fused Slang kernels:
+
+```python
+import torch
+import slangimage.augment as A
+
+train = A.Compose([
+    A.RandomResizedCrop(224),
+    A.RandomHorizontalFlip(),
+    A.ColorJitter(0.4, 0.4, 0.4, 0.1),
+    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+])
+images = torch.randint(0, 256, (64, 3, 480, 640), dtype=torch.uint8, device="cuda")
+x = train(images)   # (64, 3, 224, 224) float16; a list of decoded images also works
+```
+
+Results match torchvision's float functionals image by image. Inputs are
+read in place from any decoder (torchvision, nvImageCodec, DALI, DataLoader
+workers), and you can add your own ops in a few lines of Slang. It needs
+PyTorch with CUDA, but not the compiled `slangpy-torch` bridge. See
+[docs/AUGMENT.md](https://github.com/tekintatar/slangimage/blob/main/docs/AUGMENT.md)
+for the transforms, decoder recipes, custom ops and measured performance.
+
 ## Precision
 
 fp16 is the default storage format: lossless for 8-bit sources and half the
