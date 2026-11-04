@@ -8,14 +8,14 @@ build-backend = "hatchling.build"
 [project]
 name = "slangimage"
 version = "0.1.1"
-description = "Fast GPU image processing (Metal, CUDA, Vulkan) and PyTorch training augmentation, written in Slang."
+description = "Fast GPU image processing on Metal, CUDA and Vulkan, written in Slang, with differentiable ops for PyTorch."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 # upper bound tracks slangpy's available wheels (no cp314 for slangpy 0.42)
 requires-python = ">=3.10,<3.14"
 authors = [{ name = "Tekin Tatar" }]
-keywords = ["image-processing", "data-augmentation", "computer-vision", "gpu", "slang", "slangpy", "cuda", "metal", "vulkan", "pytorch"]
+keywords = ["image-processing", "computer-vision", "gpu", "slang", "slangpy", "cuda", "metal", "vulkan", "pytorch"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Environment :: GPU",

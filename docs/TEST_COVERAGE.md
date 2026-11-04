@@ -27,8 +27,7 @@ This maps existing tests, not exhaustive numerical coverage. The prewarm check
 now enforces operator execution on the selected device at both precisions;
 it remains dispatch/storage evidence, not an independent mathematical oracle.
 Scope: all **44 image operators** in `ops.__all__`, its three helpers/re-exports,
-the nine differentiable operators, nine `nn` wrappers, three exported effects, and
-the ten `slangimage.augment` transforms with its two custom-op base classes.
+the nine differentiable operators, nine `nn` wrappers, and three exported effects.
 Runtime ownership and threading, installed-artifact and entry-point checks, and
 performance are recorded in the later sections of this page.
 
@@ -1735,50 +1734,6 @@ add-to-pipeline and clear callbacks from separate threads; it fails on the
 previous code. The fixed playground was also exercised in a browser on Metal:
 first preview, operator switch, add to pipeline, fp32 toggle and clear, with
 no server errors.
-
-## CUDA augmentation pipelines (`slangimage.augment`)
-
-Every transform is checked image by image against the torchvision
-`transforms.v2.functional` call it mirrors: `Compose.max_reference_error`
-replays each image's sampled values through the transforms' `_reference`
-methods. Inputs are photo-like uint8 images of nine sizes, including
-extreme aspect ratios (40x300, 300x40, 23x17) that exercise
-RandomResizedCrop's centre-crop fallback. Budgets are 1e-4 for float32
-output and 4e-3 for float16 output, in normalized units.
-
-| transform | evidence (`tests/test_augment.py`) |
-|---|---|
-| RandomResizedCrop | reference: recipes, non-square size, custom scale/ratio, `antialias=False`, fallback sizes |
-| Resize | reference: `(h, w)`, shorter side + CenterCrop, `antialias=False` |
-| CenterCrop | reference: alone, after Resize, larger than the image (zero padding) |
-| RandomHorizontalFlip | reference: `p=1`, two flips |
-| ColorJitter | reference: each factor alone, all four with random order, inside RandomApply, after a blur (mean of the blurred image) |
-| RandomApply | reference: colour ops, one blur |
-| RandomGrayscale | reference |
-| GaussianBlur | reference: square and `(kx, ky)` kernels, fixed and random sigma, two blurs in one pipeline |
-| RandomSolarize | reference off the threshold; values exactly on it may differ (checked to be on it) |
-| Normalize | reference (in every recipe) |
-| ColorOp, NeighbourhoodOp | reference: user-defined gamma and box blur (reflect, clamp), helper-name isolation, compile-error message |
-
-Also on CUDA: batch tensor, CHW list, HWC list and a non-contiguous HWC view
-give identical output; dtype, shape, empty input and input-error messages;
-`torch.manual_seed` repeats a run; `same_on_batch` gives identical values;
-sampled RandomResizedCrop areas and aspects, flip rates, ColorJitter ranges
-and all 24 op orders match torchvision's sampler statistically; SlangPy's
-Python torch bridge gives the same output as the compiled one.
-`tests/test_augment_api.py` checks pipeline-structure rules, argument
-validation and custom-op declarations without a GPU or torch.
-
-Validation record (2026-11-03): NVIDIA H100 NVL, driver 580 (CUDA 13.0),
-Python 3.12, torch 2.13.0+cu130, torchvision 0.28.0, SlangPy 0.42.0, the
-installed wheel. `scripts/cuda_box/run_tests.sh cuda vulkan`: CUDA 5179
-passed, including the 41 CUDA augment tests and the 34 GPU-free augment
-tests (counted in the texture + host group); Vulkan 5013 passed, with the
-CUDA augment and autograd modules skipped. A fresh environment with only the
-wheel, torch and torchvision (SlangPy 0.43.1, no `slangpy-torch`) ran on
-SlangPy's Python torch bridge: an ImageNet recipe matched torchvision to
-9.3e-5 (float32, normalized units, uniform-noise images), and the README and
-docs/AUGMENT.md examples ran.
 
 ## Reporting backend coverage accurately
 

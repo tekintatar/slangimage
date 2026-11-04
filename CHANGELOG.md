@@ -7,25 +7,11 @@ reaches 1.0.
 
 ## [Unreleased]
 
-### Added
+### Removed
 
-- `slangimage.augment`: GPU training augmentation for PyTorch on CUDA
-  ([docs/AUGMENT.md](docs/AUGMENT.md)). Pipelines use torchvision's transform
-  names (`RandomResizedCrop`, `Resize`, `CenterCrop`, `RandomHorizontalFlip`,
-  `ColorJitter`, `RandomApply`, `RandomGrayscale`, `GaussianBlur`,
-  `RandomSolarize`, `Normalize`) and compile into a few fused Slang kernels.
-  - Random values are drawn for every image; `same_on_batch=True` shares
-    them across the batch.
-  - Results match torchvision's float functionals image by image;
-    `Compose.max_reference_error` checks a pipeline against them.
-  - Inputs are a uint8 batch or lists of decoded images of any size (CHW or
-    HWC), read in place.
-  - Define your own ops with `ColorOp` and `NeighbourhoodOp`: a few lines of
-    Python and one Slang function.
-  - Works with a plain `pip install slangimage torch`: the compiled
-    `slangpy-torch` bridge is optional for this path.
-- `benchmarks/compare_augment_pipelines.py` compares augmentation pipelines
-  with torchvision and Kornia.
+- `slangimage.augment` (GPU training augmentation), which was on `main` for
+  a day and never released, moved to its own package,
+  [SlangVision](https://github.com/tekintatar/slangvision).
 
 ## [0.1.1] - 2026-11-02
 

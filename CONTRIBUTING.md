@@ -23,15 +23,6 @@ If a backend fails or the tests cannot find a GPU, start with
 `python -m slangimage`: it runs a test kernel on each backend and reports the
 reason for every failure (paste its output into bug reports).
 
-For training augmentation (`slangimage.augment`, Linux + NVIDIA), add a
-CUDA build of PyTorch and torchvision (the tests compare against
-torchvision); NVRTC is needed as for the CUDA backend (README, *CUDA on
-Linux*). It does not need SlangPy's compiled torch bridge:
-
-```bash
-pip install -e ".[dev]" torch torchvision
-```
-
 For the differentiable ops (Linux + NVIDIA), build SlangPy's torch bridge
 before the editable install; the prerequisites are in the README's *PyTorch
 extra* section and [docs/INSTALL_TORCH.md](docs/INSTALL_TORCH.md). Passing
@@ -54,25 +45,21 @@ the README's *Choosing a backend*):
 ```bash
 SLANGIMAGE_BACKEND=metal  pytest          # macOS
 SLANGIMAGE_BACKEND=vulkan pytest          # Linux/Windows (Vulkan driver)
-SLANGIMAGE_BACKEND=cuda   pytest -ra      # NVIDIA + NVRTC; also runs the CUDA augment and gradient tests if available
+SLANGIMAGE_BACKEND=cuda   pytest -ra      # NVIDIA + NVRTC; also runs CUDA forward/gradient tests if available
 ```
 
-Four modules are CUDA-only and require `auto`/`cuda` selection and available
-`torch` + CUDA: the differentiable tests (`test_diff.py`,
-`test_diff_core_contracts.py`, `test_nn.py`) and the augmentation tests
-(`test_augment.py`, which also needs torchvision). Explicit Metal/Vulkan
-selection skips all four before probing CUDA, even on a CUDA-capable machine.
-The augmentation checks that need no GPU (`test_augment_api.py`) run
-everywhere.
+The differentiable tests (`test_diff.py`, `test_diff_core_contracts.py`, and
+`test_nn.py`) require `auto`/`cuda` selection and available `torch` + CUDA.
+Explicit Metal/Vulkan selection skips all three modules before probing CUDA,
+even on a CUDA-capable machine.
 
 The summary separates **Selected-backend texture + host tests**, intentional
-**AUTO-device API/lifecycle tests**, **CUDA autograd tests** and **CUDA
-augment tests**. The first group includes CPU-only checks, so its total is not
-a count of numerical tests. Use `-m 'not auto_device'` to exclude intentional
-automatic-device checks, or `-m auto_device` to select them separately. Each
-skipped CUDA collection node means an entire module was excluded, not one test
-case. A CUDA release check with skipped autograd or augment modules has not
-validated gradients or augmentation.
+**AUTO-device API/lifecycle tests**, and **CUDA autograd tests**. The first group
+includes CPU-only checks, so its total is not a count of numerical tests.
+Use `-m 'not auto_device'` to exclude intentional automatic-device checks, or
+`-m auto_device` to select them separately. Three skipped CUDA collection nodes
+mean three entire modules were excluded, not three test cases.
+A CUDA release check with skipped autograd modules has not validated gradients.
 Use `-ra` to inspect skip reasons and record the actual device/dependency stack.
 See the [operator evidence map and reporting rules](docs/TEST_COVERAGE.md).
 
@@ -89,16 +76,16 @@ scripts/check.sh -k bilateral          # extra arguments go to pytest
 ```
 
 Tests that need a GPU carry the `gpu` marker (applied automatically to tests
-that use the `ctx` fixture, AUTO-device tests and the CUDA-only modules);
+that use the `ctx` fixture, AUTO-device tests and the CUDA autograd modules);
 mark any other test that creates a device yourself.
 
 GitHub Actions runs `scripts/check.sh --no-gpu` on Python 3.10 and 3.13,
 shellcheck, a check that `python -m slangimage` reports cleanly without a GPU,
 and the reproducible wheel/sdist build with its archive checks on every push to
-`main` and every pull request. Hosted runners have no supported GPU, so run
-the GPU tests on the backend(s) you have before opening a PR, and state in the
-PR which backend, device and dependency versions you tested. Maintainers
-additionally run artifact validation, fresh-install checks and the other GPU suites: Metal on Apple Silicon, and
+`main` and every pull request. Hosted runners have no supported GPU, so run the GPU tests
+on the backend(s) you have before opening a PR, and state in the PR which
+backend, device and dependency versions you tested. Maintainers additionally run artifact validation,
+fresh-install checks and the other GPU suites: Metal on Apple Silicon, and
 CUDA/Vulkan on a Linux NVIDIA host set up with the helper scripts in
 `scripts/cuda_box/`. Record the actual device and dependency stack before
 claiming a check passed.
@@ -164,25 +151,6 @@ tests with `@pytest.mark.auto_device`; use `ctx` for selected-backend tests.
 Downstream packages can ship their own private `.slang` kernels without forking:
 register a directory with `ModuleCache.add_ops_dir()` (see
 `examples/05_custom_kernels.py`).
-
-## Adding an augmentation transform
-
-`slangimage.augment` follows torchvision, not the photo-editing semantics of
-the texture operators. A new transform:
-
-1. **Matches torchvision's float functional image by image.** Write it as a
-   `ColorOp` or `NeighbourhoodOp` (the public custom-op API) where it fits;
-   shared Slang helpers go in `src/slangimage/shaders/augment/augment.slang`.
-2. **Has a reference** that replays the per-image random values through
-   torchvision (`_reference`, or `reference` on a custom op).
-3. **Is tested on CUDA** in `tests/test_augment.py` through
-   `Compose.max_reference_error`; argument and pipeline-rule checks that need
-   no GPU go in `tests/test_augment_api.py`.
-4. **Is documented** in the transform table of
-   [docs/AUGMENT.md](docs/AUGMENT.md) and in the augmentation section of
-   [docs/TEST_COVERAGE.md](docs/TEST_COVERAGE.md).
-
-`Compose.source` shows the Slang generated for a pipeline.
 
 ## Conventions
 
